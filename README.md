@@ -79,6 +79,7 @@ Architecture rules and dependency direction: [`docs/architecture.md`](docs/archi
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md)
+- [`docs/status.md`](docs/status.md)
 - [`docs/testing.md`](docs/testing.md)
 - [`docs/release.md`](docs/release.md)
 - [`docs/decisions.md`](docs/decisions.md)
