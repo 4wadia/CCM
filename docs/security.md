@@ -1,7 +1,8 @@
 # Security
 
-**Status:** M0 — principles only. The cipher, key lifecycle, and verified controls are
-completed and tested in M1. Do not treat this document as a completed security review.
+**Status:** M1 — encrypted database and key management are implemented. Host tests and
+the Android build pass. iOS code is written but not compiled or run because there is no
+macOS host, and no Android device or emulator is available for keystore runtime tests.
 
 ## Assets to protect
 
@@ -16,8 +17,8 @@ completed and tested in M1. Do not treat this document as a completed security r
 
 | Threat | Control direction |
 |---|---|
-| Device loss / theft | Encrypted database; biometric app gate; encrypted statement files |
-| Backup extraction | Backups are separately encrypted with a user password; OAuth tokens excluded |
+| Device loss / theft | Encrypted database; device-level key protection; biometric app gate deferred |
+| Backup extraction | Android backup disabled; iOS Keychain item is device-only; iOS file exclusion pending M8/M9 |
 | Malicious PDF | Local validation, size/time limits, no script execution, no network |
 | Log leakage | Single logging facade; no payload logging; redaction tests |
 | Malicious or buggy bank adapter | Constrained declarative rules; no code/eval from email content |
@@ -36,18 +37,60 @@ completed and tested in M1. Do not treat this document as a completed security r
 - No sensitive content in logs, error messages, analytics, or crash reports.
 - Gmail tokens never stored in ordinary database columns or preferences.
 
-## Key lifecycle (to be validated in M1)
+## Implemented controls (M1)
 
-1. First launch generates a random 256-bit database key.
-2. Key is wrapped with a platform-held key (Keystore/Keychain) and stored as ciphertext.
-3. On launch, the app unwraps the key after the configured authentication gate.
-4. Background work uses a documented, separately protected access path — biometric
-   prompts are not assumed to be available.
-5. Key invalidation or loss surfaces a typed error. The app never silently deletes and
-   recreates the database.
-6. Recovery is possible only through a previously created encrypted backup.
+- **Cipher:** SQLCipher 4.19.0 community, linked through the `sqlite3` 3.x hook
+  (`hooks.user_defines.sqlite3.source: sqlcipher`). The Android APK contains
+  `libsqlcipher.so` for arm64-v8a, armeabi-v7a, and x86_64.
+- **Fail closed:** every connection verifies `PRAGMA cipher_version` before use. If
+  SQLCipher is absent, opening fails instead of writing plaintext.
+- **Key verification:** a schema read runs during setup; a wrong or corrupt key fails the
+  open and is wrapped in `DatabaseOpenException`.
+- **Encryption at rest:** integration tests write a sentinel, then inspect the database,
+  WAL, and SHM files. No plaintext sentinel or plaintext SQLite header is present.
+- **Key protection:**
+  - Android: a random 256-bit database key is wrapped with a non-exportable AES-256-GCM
+    Android Keystore key. Only ciphertext is stored in app-private preferences.
+  - iOS: a random 256-bit key is stored as a Keychain generic-password item with
+    `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` and synchronization disabled.
+- **Key loss is terminal by design:** if wrapped/Keychain material exists but cannot be
+  read, the channel returns a typed error. It never generates a replacement key, which
+  would silently point the app at an empty database.
+- **Memory hygiene:** raw key bytes are zeroed in Dart after hex encoding, in Kotlin after
+  wrapping/unwrapping, and in Swift after copying to Keychain data. The hex form is
+  required by SQLCipher's raw-key pragma and remains in memory for connection setup only.
+- **Backups:** Android sets `android:allowBackup="false"` and excludes every data domain
+  from cloud backup and device transfer. The iOS Keychain item cannot migrate or sync.
+- **No secret logging:** channel errors carry a stable code only; exception messages and
+  key material are never returned to Dart or logged.
 
-## Backup
+## Key lifecycle (implemented)
+
+1. First launch generates 32 random bytes on the native side.
+2. Android wraps them with a Keystore AES-GCM key; iOS stores them as a device-only
+   Keychain item protected by the OS Keychain.
+3. Dart receives the key only to open the database, computes the SQLCipher raw-key hex
+   form, and zeroes the byte buffer.
+4. `NativeDatabase.createInBackground` opens SQLite on a dedicated isolate in production.
+5. On reopen, the same wrapped/Keychain key is recovered. Losing the key or failing
+   authentication surfaces an error; the database is not recreated.
+6. Recovery requires a future encrypted backup (M8). No recovery mechanism exists yet.
+
+**Biometric gate:** D-08 remains proposed. M1 does not implement an app-launch biometric
+prompt. Protection is currently device unlock plus Keystore/Keychain; Android's wrapping
+key does not require user authentication. The biometric design workstream must revisit
+D-08 before M10.
+
+## Platform backup exclusion
+
+- **Android:** `allowBackup=false` plus `res/xml/data_extraction_rules.xml`; verified in
+  the built APK manifest.
+- **iOS:** the Keychain item is `ThisDeviceOnly` and non-synchronizing. The database file
+  itself lives in Application Support and is **not yet** marked
+  `NSURLIsExcludedFromBackupKey`. This is a release-blocking item for the iOS validation
+  milestone (M9) and the backup milestone (M8).
+
+## Backup feature (M8, not implemented)
 
 - Argon2id key derivation (fallback only if no vetted implementation exists) and
   AES-256-GCM authenticated encryption.
@@ -63,9 +106,14 @@ passwords, OAuth tokens, encryption keys, or birth dates used in password rules.
 Allowed: stable error codes, counts, durations, parser IDs and versions, adapter tier,
 and non-identifying status values.
 
-## Residual risks to document
+## Residual risks
 
-- Merchant normalization is indexed and therefore not encrypted (specification §15.1).
-- Background tasks may run without an interactive biometric check by design.
-- Platform backup exclusion must be verified per OS version.
+- Merchant normalization is indexed and stored in the whole-database-encrypted file but is
+  not separately encrypted (specification §15.1, D-14, D-16).
+- Background database work opens without an interactive biometric check by design.
+- iOS Keychain and file backup behavior is statically reviewed only; no iOS runtime
+  evidence exists.
+- The SQLCipher test vector is the host Linux build from the `sqlite3` hook. Android use
+  is proven by linkage in the APK, not by an on-device open.
+- Rooted/jailbroken devices and memory scraping by a privileged attacker are out of scope.
 - PDF encryption variants unsupported by the chosen library must fail closed.

@@ -2,7 +2,8 @@
 
 Local-first, cross-platform credit card management application built with Flutter.
 
-**Status:** M0 — project foundation (in progress)
+**Status:** M1 — encrypted database and key management implemented (host-verified;
+device and iOS runtime validation pending)
 **Specification:** `../credit_card_manager_technical_specification.md`
 **Implementation plan:** `../credit_card_manager_implementation_plan.md`
 
@@ -79,6 +80,8 @@ Architecture rules and dependency direction: [`docs/architecture.md`](docs/archi
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md)
+- [`docs/database.md`](docs/database.md)
+- [`docs/security.md`](docs/security.md)
 - [`docs/status.md`](docs/status.md)
 - [`docs/testing.md`](docs/testing.md)
 - [`docs/release.md`](docs/release.md)

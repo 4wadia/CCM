@@ -8,7 +8,7 @@ the source of truth.
 | Milestone | Status | Notes |
 |---|---|---|
 | M0 Environment and foundation | Complete | Toolchain installed; app, router, tests, docs, and debug APK verified |
-| M1 Encrypted database and keys | Not started | Blocked only on M0 sign-off |
+| M1 Encrypted database and keys | Implemented (validation partial) | Host encryption/schema/repository tests pass; Android APK builds with SQLCipher and the Keystore channel. On-device keystore and iOS Keychain runtime tests are blocked |
 | M2 Cards and dashboard | Not started | |
 | M3 Transaction engine | Not started | |
 | M4 Android SMS | Not started | Needs a physical device and anonymized samples |
@@ -54,6 +54,54 @@ the source of truth.
 
 Flutter installed NDK `28.2.13676358` automatically on the first Android build.
 
+## M1 checklist
+
+- [x] SQLCipher selected and enabled through the `sqlite3` 3.x hook
+- [x] `sqlcipher_flutter_libs` removed (obsolete with `sqlite3` 3.x)
+- [x] Fail-closed `cipher_version` check and wrong-key rejection
+- [x] Android Keystore AES-256-GCM key wrapping (`SecurityChannel.kt`)
+- [x] iOS Keychain device-only key storage in `AppDelegate.swift`
+- [x] Typed `DatabaseKeyProvider` failure handling; no automatic key recreation
+- [x] Schema v1: banks, cards, categories, transactions, sources, import jobs, settings
+- [x] Required indexes, foreign keys, secure delete, WAL
+- [x] Idempotent system-category seeding
+- [x] Forward-migration harness that fails loudly on a missing step
+- [x] Domain entities and repositories for banks, cards, categories, and settings
+- [x] Riverpod database and repository providers (lazy; not yet consumed by UI)
+- [x] Android backup disabled and all data domains excluded from transfer
+- [x] Encryption-at-rest test covering database, WAL, and SHM files
+- [x] Reopen, wrong-key, deleted-key, and background-isolate tests
+- [x] `dart format`, `flutter analyze`, `flutter test`, and debug APK build
+- [x] Security, database, architecture, testing, and decision docs updated
+- [ ] Android Keystore round-trip on a device or emulator (no `/dev/kvm`, no device)
+- [ ] iOS build and Keychain runtime test (no macOS host)
+
+## M1 build and test evidence
+
+| Check | Result |
+|---|---|
+| `dart format --set-exit-if-changed .` | Pass (45 files, 0 changed) |
+| `flutter analyze` | No issues |
+| `flutter test` | 35/35 pass |
+| `flutter build apk --debug` | Success, 65.8 s warm |
+| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 223 MB |
+| Package / version | `app.creditcardmanager`, `0.1.0+1` |
+| minSdk / targetSdk / compileSdk | 24 / 36 / 36 |
+| Cipher in host tests | SQLCipher `4.19.0 community` |
+| Cipher in APK | `libsqlcipher.so` for arm64-v8a, armeabi-v7a, x86_64 |
+| Manifest | `allowBackup=false`; `dataExtractionRules` resource present |
+| Kotlin channel | `SecurityChannel` present in `classes5.dex` |
+| iOS build | Not run (no macOS host) |
+| Device tests | Not run (no hardware device; no `/dev/kvm`) |
+
+The Android build installed SDK Platform 35 and CMake 3.22.1 automatically to compile
+the SQLCipher native asset. The debug APK is large because it contains Flutter debug
+artifacts for all ABIs; this is not a release-size measurement.
+
+The wrong-key test prints SQLCipher `hmac check failed` and `error decrypting page`
+lines to stderr. Those lines are expected cipher diagnostics, contain no data, and the
+test passes.
+
 ## Environment record
 
 | Item | Value |
@@ -72,6 +120,15 @@ Flutter installed NDK `28.2.13676358` automatically on the first Android build.
   Keychain runtime, and TestFlight validation are blocked. No iOS support is claimed.
 - **No `/dev/kvm`:** emulator acceleration is unavailable, so device-level testing
   (SMS permissions, biometrics, keychain) requires a physical device or another host.
+  M1's Keystore path and the app's real database open are therefore unexercised at runtime.
+- **M1 validation gap:** encryption, schema, repositories, migrations, and the
+  background-isolate path are proven by host tests. The APK is proven to link SQLCipher
+  and contain the Keystore channel, but no Android Keystore round-trip has executed.
+- **iOS backup exclusion incomplete:** the Keychain key is device-only, but the database
+  file is not yet marked `NSURLIsExcludedFromBackupKey`. This is release-blocking for
+  M8/M9 rather than silently accepted.
+- **Biometric app gate not implemented:** D-08 remains proposed. M1 relies on device
+  unlock plus Keystore/Keychain protection.
 - **`/tmp` is a 1.6 GB tmpfs:** all SDKs and caches are redirected to `$HOME`;
   commands must source `~/development/env.sh`.
 - **No CI configured:** the workspace has no CI runner. `tool/check.sh` is the local
@@ -81,9 +138,14 @@ Flutter installed NDK `28.2.13676358` automatically on the first Android build.
 
 ## Next milestone
 
-M1 — encrypted database and key management:
+M1 is implemented but not fully signed off because runtime keystore validation requires a
+device and iOS validation requires macOS. Pending approval, M2 begins card and dashboard
+work against the existing schema and provider contracts.
 
-1. Cipher spike (SQLCipher vs SQLite3MultipleCiphers) with Drift.
-2. Keystore/Keychain key wrapping.
-3. Schema v1 plus migration harness.
-4. Encryption-at-rest, reopen, rollback, and key-loss tests.
+M2 — cards and dashboard:
+
+1. Card CRUD screens backed by `CreditCardRepository` and `BankRepository`.
+2. Archive/restore lifecycle, currency, limit, and billing-day validation.
+3. Dashboard aggregates per currency with integer minor units.
+4. Widget and financial-formula tests; Android build.
+5. Formal M1 acceptance only after an on-device keystore round-trip is possible.

@@ -1,7 +1,8 @@
 # Architecture
 
-**Status:** M0 foundation. Database, integrations, and feature modules are added in later
-milestones; this document describes the boundaries those additions must respect.
+**Status:** M1 — encrypted database, key providers, repositories, and migration harness
+are in place. Feature modules are added in later milestones; this document describes the
+boundaries those additions must respect.
 
 ## Layers
 
@@ -52,8 +53,10 @@ main.dart
             └─ router.dart  GoRouter, StatefulShellRoute with 5 destinations
 ```
 
-M0 has no database, network, or platform initialization. Those hooks belong in
-`bootstrap.dart` and are added only when the owning milestone lands.
+M0 has no database, network, or platform initialization. M1 adds a lazily-opened
+encrypted database and repository providers in `lib/app/providers.dart`; no screen consumes
+them yet, so startup does not block on key/keystore work. Network and SMS/PDF/OAuth hooks
+belong in `bootstrap.dart` and are added only when the owning milestone lands.
 
 ## Navigation
 
@@ -97,7 +100,7 @@ Planned integrations and their owning milestone:
 
 | Channel | Milestone |
 |---|---|
-| Keystore / Keychain key wrap | M1 |
+| Keystore / Keychain key store (`app.creditcardmanager/security`) | Implemented M1 |
 | SMS read + permission | M4 |
 | OAuth broker / secure token storage | M5 |
 | Background tasks | M5/M10 |
@@ -108,4 +111,10 @@ email, or PDF content to callers that do not need it.
 ## Milestone boundaries
 
 M0 intentionally contains **no** database, SMS, Gmail, PDF, reward, or networking code.
-Per specification §25, those begin only after M1 validates encryption and migrations.
+M1 adds only the encrypted database, schema v1, repositories, key integration, and tests.
+Per specification §25, SMS, Gmail, PDF, and rewards work begins only after M1 encryption
+and data-integrity validation. Host validation is complete; device keystore and iOS
+runtime validation remain blocked (see `status.md`).
+
+Database details, pragmas, schema conventions, and migration policy are in
+`docs/database.md`.

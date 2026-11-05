@@ -29,6 +29,31 @@
 
 No database or network tests exist yet by design.
 
+## M1 coverage
+
+- SQLCipher is linked in `flutter test` through the `sqlite3` native-assets hook;
+  `PRAGMA cipher_version` is asserted, so the encryption tests cannot silently run
+  against plain SQLite.
+- A sentinel bank name is written and then searched for in the database, WAL, and SHM
+  files. None may contain the plaintext or a plaintext SQLite header.
+- Closing and reopening with the same key preserves data; a wrong key and a deleted key
+  both fail with typed errors. A database whose `user_version` is newer than this build
+  is refused rather than opened against an unknown schema.
+- The production `NativeDatabase.createInBackground` path is exercised, not just the
+  direct-connection test path.
+- Schema tests assert every v1 table and index, 12 seeded categories, foreign-key
+  enforcement, and unique transaction source references.
+- Repository tests cover bank/card round-trips, archive/restore/close, settings upsert and
+  removal, and custom categories.
+- Migration sequencing is unit-tested for order, no-op, downgrade rejection, and a missing
+  step. Real schema upgrades start at v2.
+- The Dart side of the key channel is tested with a mock binary messenger for valid,
+  wrong-length, malformed, platform-error, and delete responses.
+- No tests are skipped. The expected SQLCipher stderr lines from the wrong-key test are
+  diagnostics, not failures.
+- Android and iOS native key stores are compiled/validated only as far as this host
+  allows: Android is compiled by the debug APK build; iOS is not compiled.
+
 ## Commands
 
 ```bash
