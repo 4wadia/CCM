@@ -23,7 +23,7 @@ final databaseKeyProviderProvider = Provider<DatabaseKeyProvider>(
 
 /// Encrypted database, opened on first use.
 ///
-/// No UI reads this yet; the cards milestone consumes it.
+/// Opened lazily; Cards and Home consume it through repository providers.
 final appDatabaseProvider = FutureProvider<AppDatabase>((ref) async {
   final keyProvider = ref.watch(databaseKeyProviderProvider);
   final file = await appDatabaseFile();

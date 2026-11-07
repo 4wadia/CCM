@@ -27,6 +27,11 @@ class CreditCards extends Table {
   TextColumn get network => text()();
   TextColumn get lastFour => text().withLength(min: 4, max: 4)();
   IntColumn get creditLimitMinor => integer()();
+
+  /// Reconciled current balance in minor units. Added in schema v2.
+  IntColumn get currentOutstandingMinor =>
+      integer().withDefault(const Constant(0))();
+
   TextColumn get currencyCode => text()();
   IntColumn get statementDay => integer().nullable()();
   IntColumn get dueDay => integer().nullable()();

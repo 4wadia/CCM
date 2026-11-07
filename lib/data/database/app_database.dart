@@ -49,8 +49,18 @@ class AppDatabase extends _$AppDatabase {
         await _createIndexes();
         await _seedSystemCategories();
       },
-      onUpgrade: (migrator, from, to) =>
-          DatabaseMigrations.run(migrator, from: from, to: to),
+      onUpgrade: (migrator, from, to) => DatabaseMigrations.run(
+        from: from,
+        to: to,
+        steps: <int, MigrationStep>{
+          2: () async {
+            await migrator.addColumn(
+              creditCards,
+              creditCards.currentOutstandingMinor,
+            );
+          },
+        },
+      ),
       beforeOpen: (details) async {
         // Per-connection pragma; also set in the database factory setup.
         await customStatement('PRAGMA foreign_keys = ON');

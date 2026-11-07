@@ -2,9 +2,9 @@ import 'package:drift/drift.dart';
 
 /// Schema version understood by this build.
 ///
-/// Increment when a table or index changes. Add the matching step to
-/// [DatabaseMigrations.stepsFor] in the same change.
-const int latestSchemaVersion = 1;
+/// Increment when a table or index changes. Add the matching step at the
+/// database's migration strategy in the same change.
+const int latestSchemaVersion = 2;
 
 /// One forward migration step.
 typedef MigrationStep = Future<void> Function();
@@ -72,20 +72,15 @@ Future<void> applyMigrationPlan({
 
 /// Schema migrations for the application database.
 abstract final class DatabaseMigrations {
-  /// Builds the step map for the given [migrator].
+  /// Runs the supplied forward steps after rejecting downgrades and databases
+  /// written by a newer build.
   ///
-  /// Real steps are added as the schema evolves. Until then an upgrade request
-  /// that needs a step fails instead of silently opening an old schema.
-  static Map<int, MigrationStep> stepsFor(Migrator migrator) {
-    return <int, MigrationStep>{
-      // 2: () async { await migrator.addColumn(...); },
-    };
-  }
-
-  static Future<void> run(
-    Migrator migrator, {
+  /// A missing step still fails loudly. Steps are supplied by the database so
+  /// they can reference Drift's generated table and column objects.
+  static Future<void> run({
     required int from,
     required int to,
+    required Map<int, MigrationStep> steps,
   }) async {
     if (to < from) {
       throw SchemaDowngradeException(from: from, to: to);
@@ -99,6 +94,6 @@ abstract final class DatabaseMigrations {
       );
     }
 
-    await applyMigrationPlan(from: from, to: to, steps: stepsFor(migrator));
+    await applyMigrationPlan(from: from, to: to, steps: steps);
   }
 }

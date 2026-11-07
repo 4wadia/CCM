@@ -2,8 +2,8 @@
 
 Local-first, cross-platform credit card management application built with Flutter.
 
-**Status:** M1 — encrypted database and key management implemented (host-verified;
-device and iOS runtime validation pending)
+**Status:** M2 — encrypted cards, reconciled balances, and a currency-aware dashboard
+implemented (host-verified; device and iOS runtime validation pending)
 **Specification:** `../credit_card_manager_technical_specification.md`
 **Implementation plan:** `../credit_card_manager_implementation_plan.md`
 

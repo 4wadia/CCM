@@ -46,13 +46,32 @@ No database or network tests exist yet by design.
 - Repository tests cover bank/card round-trips, archive/restore/close, settings upsert and
   removal, and custom categories.
 - Migration sequencing is unit-tested for order, no-op, downgrade rejection, and a missing
-  step. Real schema upgrades start at v2.
+  step. A populated v1 database is upgraded to v2 and checked for the new outstanding
+  column, preserved card data, and default value.
 - The Dart side of the key channel is tested with a mock binary messenger for valid,
   wrong-length, malformed, platform-error, and delete responses.
 - No tests are skipped. The expected SQLCipher stderr lines from the wrong-key test are
   diagnostics, not failures.
 - Android and iOS native key stores are compiled/validated only as far as this host
   allows: Android is compiled by the debug APK build; iOS is not compiled.
+
+## M2 coverage
+
+- Pure-domain tests group active card limits, outstanding balances, available credit, and
+  utilisation by currency; archived/closed cards are excluded and mixed currencies are
+  never added together. Overall utilisation is omitted when currencies are mixed.
+- Money tests cover exact integer minor-unit parsing and formatting for zero-, two-,
+  three-, and four-fraction-digit currencies, invalid precision, malformed input, zero
+  limits, non-negative balances, and unlike-currency arithmetic guards.
+- Zero-limit utilisation is asserted to be `null`; over-limit utilisation remains a
+  derived percentage above 100 rather than silently clamping the money values.
+- Widget tests cover Home currency totals, outstanding/available credit, utilisation,
+  per-card summaries, the last-four-only identity fields, add/edit form validation,
+  outstanding persistence, and archive confirmation.
+- Encrypted repository tests cover card persistence, outstanding round-trips, multiple
+  cards surviving a close/reopen, and archive/restore/close lifecycle.
+- The v2 migration test upgrades a populated v1 database rather than only creating a
+  fresh schema.
 
 ## Commands
 
@@ -68,7 +87,7 @@ flutter test integration_test        # when integration tests exist
 | Milestone | Required tests |
 |---|---|
 | M1 | Encryption at rest, reopen, FKs, migrations, rollback, wrong/corrupt key |
-| M2 | All financial formulas, mixed currency, zero limit, card CRUD/archive |
+| M2 | Currency-grouped limits, minor-unit conversion, mixed currency, zero limit, card CRUD/archive |
 | M3 | Fingerprint stability, idempotent re-import, ambiguity → review, filters |
 | M4 | Synthetic SMS corpus, OTP exclusion, permission denied, no content in logs |
 | M5 | MIME parsing, discovery confidence, token absence, resumable sync |

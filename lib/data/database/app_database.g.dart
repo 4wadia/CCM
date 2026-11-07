@@ -510,6 +510,18 @@ class $CreditCardsTable extends CreditCards
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _currentOutstandingMinorMeta =
+      const VerificationMeta('currentOutstandingMinor');
+  @override
+  late final GeneratedColumn<int> currentOutstandingMinor =
+      GeneratedColumn<int>(
+        'current_outstanding_minor',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
     'currencyCode',
   );
@@ -628,6 +640,7 @@ class $CreditCardsTable extends CreditCards
     network,
     lastFour,
     creditLimitMinor,
+    currentOutstandingMinor,
     currencyCode,
     statementDay,
     dueDay,
@@ -710,6 +723,15 @@ class $CreditCardsTable extends CreditCards
       );
     } else if (isInserting) {
       context.missing(_creditLimitMinorMeta);
+    }
+    if (data.containsKey('current_outstanding_minor')) {
+      context.handle(
+        _currentOutstandingMinorMeta,
+        currentOutstandingMinor.isAcceptableOrUnknown(
+          data['current_outstanding_minor']!,
+          _currentOutstandingMinorMeta,
+        ),
+      );
     }
     if (data.containsKey('currency_code')) {
       context.handle(
@@ -829,6 +851,10 @@ class $CreditCardsTable extends CreditCards
         DriftSqlType.int,
         data['${effectivePrefix}credit_limit_minor'],
       )!,
+      currentOutstandingMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_outstanding_minor'],
+      )!,
       currencyCode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}currency_code'],
@@ -886,6 +912,9 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
   final String network;
   final String lastFour;
   final int creditLimitMinor;
+
+  /// Reconciled current balance in minor units. Added in schema v2.
+  final int currentOutstandingMinor;
   final String currencyCode;
   final int? statementDay;
   final int? dueDay;
@@ -904,6 +933,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
     required this.network,
     required this.lastFour,
     required this.creditLimitMinor,
+    required this.currentOutstandingMinor,
     required this.currencyCode,
     this.statementDay,
     this.dueDay,
@@ -927,6 +957,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
     map['network'] = Variable<String>(network);
     map['last_four'] = Variable<String>(lastFour);
     map['credit_limit_minor'] = Variable<int>(creditLimitMinor);
+    map['current_outstanding_minor'] = Variable<int>(currentOutstandingMinor);
     map['currency_code'] = Variable<String>(currencyCode);
     if (!nullToAbsent || statementDay != null) {
       map['statement_day'] = Variable<int>(statementDay);
@@ -963,6 +994,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
       network: Value(network),
       lastFour: Value(lastFour),
       creditLimitMinor: Value(creditLimitMinor),
+      currentOutstandingMinor: Value(currentOutstandingMinor),
       currencyCode: Value(currencyCode),
       statementDay: statementDay == null && nullToAbsent
           ? const Value.absent()
@@ -1001,6 +1033,9 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
       network: serializer.fromJson<String>(json['network']),
       lastFour: serializer.fromJson<String>(json['lastFour']),
       creditLimitMinor: serializer.fromJson<int>(json['creditLimitMinor']),
+      currentOutstandingMinor: serializer.fromJson<int>(
+        json['currentOutstandingMinor'],
+      ),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       statementDay: serializer.fromJson<int?>(json['statementDay']),
       dueDay: serializer.fromJson<int?>(json['dueDay']),
@@ -1026,6 +1061,9 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
       'network': serializer.toJson<String>(network),
       'lastFour': serializer.toJson<String>(lastFour),
       'creditLimitMinor': serializer.toJson<int>(creditLimitMinor),
+      'currentOutstandingMinor': serializer.toJson<int>(
+        currentOutstandingMinor,
+      ),
       'currencyCode': serializer.toJson<String>(currencyCode),
       'statementDay': serializer.toJson<int?>(statementDay),
       'dueDay': serializer.toJson<int?>(dueDay),
@@ -1047,6 +1085,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
     String? network,
     String? lastFour,
     int? creditLimitMinor,
+    int? currentOutstandingMinor,
     String? currencyCode,
     Value<int?> statementDay = const Value.absent(),
     Value<int?> dueDay = const Value.absent(),
@@ -1067,6 +1106,8 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
     network: network ?? this.network,
     lastFour: lastFour ?? this.lastFour,
     creditLimitMinor: creditLimitMinor ?? this.creditLimitMinor,
+    currentOutstandingMinor:
+        currentOutstandingMinor ?? this.currentOutstandingMinor,
     currencyCode: currencyCode ?? this.currencyCode,
     statementDay: statementDay.present ? statementDay.value : this.statementDay,
     dueDay: dueDay.present ? dueDay.value : this.dueDay,
@@ -1099,6 +1140,9 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
       creditLimitMinor: data.creditLimitMinor.present
           ? data.creditLimitMinor.value
           : this.creditLimitMinor,
+      currentOutstandingMinor: data.currentOutstandingMinor.present
+          ? data.currentOutstandingMinor.value
+          : this.currentOutstandingMinor,
       currencyCode: data.currencyCode.present
           ? data.currencyCode.value
           : this.currencyCode,
@@ -1134,6 +1178,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
           ..write('network: $network, ')
           ..write('lastFour: $lastFour, ')
           ..write('creditLimitMinor: $creditLimitMinor, ')
+          ..write('currentOutstandingMinor: $currentOutstandingMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('statementDay: $statementDay, ')
           ..write('dueDay: $dueDay, ')
@@ -1157,6 +1202,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
     network,
     lastFour,
     creditLimitMinor,
+    currentOutstandingMinor,
     currencyCode,
     statementDay,
     dueDay,
@@ -1179,6 +1225,7 @@ class CreditCardRow extends DataClass implements Insertable<CreditCardRow> {
           other.network == this.network &&
           other.lastFour == this.lastFour &&
           other.creditLimitMinor == this.creditLimitMinor &&
+          other.currentOutstandingMinor == this.currentOutstandingMinor &&
           other.currencyCode == this.currencyCode &&
           other.statementDay == this.statementDay &&
           other.dueDay == this.dueDay &&
@@ -1199,6 +1246,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
   final Value<String> network;
   final Value<String> lastFour;
   final Value<int> creditLimitMinor;
+  final Value<int> currentOutstandingMinor;
   final Value<String> currencyCode;
   final Value<int?> statementDay;
   final Value<int?> dueDay;
@@ -1218,6 +1266,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
     this.network = const Value.absent(),
     this.lastFour = const Value.absent(),
     this.creditLimitMinor = const Value.absent(),
+    this.currentOutstandingMinor = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.statementDay = const Value.absent(),
     this.dueDay = const Value.absent(),
@@ -1238,6 +1287,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
     required String network,
     required String lastFour,
     required int creditLimitMinor,
+    this.currentOutstandingMinor = const Value.absent(),
     required String currencyCode,
     this.statementDay = const Value.absent(),
     this.dueDay = const Value.absent(),
@@ -1266,6 +1316,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
     Expression<String>? network,
     Expression<String>? lastFour,
     Expression<int>? creditLimitMinor,
+    Expression<int>? currentOutstandingMinor,
     Expression<String>? currencyCode,
     Expression<int>? statementDay,
     Expression<int>? dueDay,
@@ -1286,6 +1337,8 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
       if (network != null) 'network': network,
       if (lastFour != null) 'last_four': lastFour,
       if (creditLimitMinor != null) 'credit_limit_minor': creditLimitMinor,
+      if (currentOutstandingMinor != null)
+        'current_outstanding_minor': currentOutstandingMinor,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (statementDay != null) 'statement_day': statementDay,
       if (dueDay != null) 'due_day': dueDay,
@@ -1308,6 +1361,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
     Value<String>? network,
     Value<String>? lastFour,
     Value<int>? creditLimitMinor,
+    Value<int>? currentOutstandingMinor,
     Value<String>? currencyCode,
     Value<int?>? statementDay,
     Value<int?>? dueDay,
@@ -1328,6 +1382,8 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
       network: network ?? this.network,
       lastFour: lastFour ?? this.lastFour,
       creditLimitMinor: creditLimitMinor ?? this.creditLimitMinor,
+      currentOutstandingMinor:
+          currentOutstandingMinor ?? this.currentOutstandingMinor,
       currencyCode: currencyCode ?? this.currencyCode,
       statementDay: statementDay ?? this.statementDay,
       dueDay: dueDay ?? this.dueDay,
@@ -1365,6 +1421,11 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
     }
     if (creditLimitMinor.present) {
       map['credit_limit_minor'] = Variable<int>(creditLimitMinor.value);
+    }
+    if (currentOutstandingMinor.present) {
+      map['current_outstanding_minor'] = Variable<int>(
+        currentOutstandingMinor.value,
+      );
     }
     if (currencyCode.present) {
       map['currency_code'] = Variable<String>(currencyCode.value);
@@ -1412,6 +1473,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCardRow> {
           ..write('network: $network, ')
           ..write('lastFour: $lastFour, ')
           ..write('creditLimitMinor: $creditLimitMinor, ')
+          ..write('currentOutstandingMinor: $currentOutstandingMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('statementDay: $statementDay, ')
           ..write('dueDay: $dueDay, ')
@@ -4873,6 +4935,7 @@ typedef $$CreditCardsTableCreateCompanionBuilder =
       required String network,
       required String lastFour,
       required int creditLimitMinor,
+      Value<int> currentOutstandingMinor,
       required String currencyCode,
       Value<int?> statementDay,
       Value<int?> dueDay,
@@ -4894,6 +4957,7 @@ typedef $$CreditCardsTableUpdateCompanionBuilder =
       Value<String> network,
       Value<String> lastFour,
       Value<int> creditLimitMinor,
+      Value<int> currentOutstandingMinor,
       Value<String> currencyCode,
       Value<int?> statementDay,
       Value<int?> dueDay,
@@ -4983,6 +5047,11 @@ class $$CreditCardsTableFilterComposer
 
   ColumnFilters<int> get creditLimitMinor => $composableBuilder(
     column: $table.creditLimitMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentOutstandingMinor => $composableBuilder(
+    column: $table.currentOutstandingMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5124,6 +5193,11 @@ class $$CreditCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get currentOutstandingMinor => $composableBuilder(
+    column: $table.currentOutstandingMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get currencyCode => $composableBuilder(
     column: $table.currencyCode,
     builder: (column) => ColumnOrderings(column),
@@ -5228,6 +5302,11 @@ class $$CreditCardsTableAnnotationComposer
 
   GeneratedColumn<int> get creditLimitMinor => $composableBuilder(
     column: $table.creditLimitMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get currentOutstandingMinor => $composableBuilder(
+    column: $table.currentOutstandingMinor,
     builder: (column) => column,
   );
 
@@ -5357,6 +5436,7 @@ class $$CreditCardsTableTableManager
                 Value<String> network = const Value.absent(),
                 Value<String> lastFour = const Value.absent(),
                 Value<int> creditLimitMinor = const Value.absent(),
+                Value<int> currentOutstandingMinor = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
                 Value<int?> statementDay = const Value.absent(),
                 Value<int?> dueDay = const Value.absent(),
@@ -5376,6 +5456,7 @@ class $$CreditCardsTableTableManager
                 network: network,
                 lastFour: lastFour,
                 creditLimitMinor: creditLimitMinor,
+                currentOutstandingMinor: currentOutstandingMinor,
                 currencyCode: currencyCode,
                 statementDay: statementDay,
                 dueDay: dueDay,
@@ -5397,6 +5478,7 @@ class $$CreditCardsTableTableManager
                 required String network,
                 required String lastFour,
                 required int creditLimitMinor,
+                Value<int> currentOutstandingMinor = const Value.absent(),
                 required String currencyCode,
                 Value<int?> statementDay = const Value.absent(),
                 Value<int?> dueDay = const Value.absent(),
@@ -5416,6 +5498,7 @@ class $$CreditCardsTableTableManager
                 network: network,
                 lastFour: lastFour,
                 creditLimitMinor: creditLimitMinor,
+                currentOutstandingMinor: currentOutstandingMinor,
                 currencyCode: currencyCode,
                 statementDay: statementDay,
                 dueDay: dueDay,

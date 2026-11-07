@@ -6,6 +6,7 @@ import 'package:credit_card_manager/core/secure_storage/database_key_provider.da
 import 'package:credit_card_manager/core/security/key_encoding.dart';
 import 'package:credit_card_manager/data/database/app_database.dart';
 import 'package:credit_card_manager/data/database/database_factory.dart';
+import 'package:credit_card_manager/data/database/migrations.dart';
 import 'package:credit_card_manager/data/repositories/bank_repository_impl.dart';
 import 'package:credit_card_manager/domain/entities/bank.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -162,7 +163,7 @@ void main() {
     final raw = sqlite3.open(databaseFile.path);
     try {
       configureEncryptedConnection(raw, keyHex);
-      raw.execute('PRAGMA user_version = 2');
+      raw.execute('PRAGMA user_version = ${latestSchemaVersion + 1}');
     } finally {
       raw.close();
     }

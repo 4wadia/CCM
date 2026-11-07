@@ -1,8 +1,8 @@
 # Architecture
 
-**Status:** M1 — encrypted database, key providers, repositories, and migration harness
-are in place. Feature modules are added in later milestones; this document describes the
-boundaries those additions must respect.
+**Status:** M2 — encrypted persistence, schema v2, card management, and the home
+dashboard are in place. Cards and Home consume repositories through Riverpod; later
+feature modules must preserve these boundaries.
 
 ## Layers
 
@@ -54,9 +54,10 @@ main.dart
 ```
 
 M0 has no database, network, or platform initialization. M1 adds a lazily-opened
-encrypted database and repository providers in `lib/app/providers.dart`; no screen consumes
-them yet, so startup does not block on key/keystore work. Network and SMS/PDF/OAuth hooks
-belong in `bootstrap.dart` and are added only when the owning milestone lands.
+encrypted database and repository providers in `lib/app/providers.dart`. M2's Cards and
+Home features consume only the card and bank repositories; the database remains lazy, so
+startup does not block on key/keystore work. Network and SMS/PDF/OAuth hooks belong in
+`bootstrap.dart` and are added only when the owning milestone lands.
 
 ## Navigation
 
@@ -111,10 +112,14 @@ email, or PDF content to callers that do not need it.
 ## Milestone boundaries
 
 M0 intentionally contains **no** database, SMS, Gmail, PDF, reward, or networking code.
-M1 adds only the encrypted database, schema v1, repositories, key integration, and tests.
-Per specification §25, SMS, Gmail, PDF, and rewards work begins only after M1 encryption
-and data-integrity validation. Host validation is complete; device keystore and iOS
-runtime validation remain blocked (see `status.md`).
+M1 adds the encrypted database, schema v1, repositories, key integration, and tests. M2
+adds card management, schema v2's reconciled outstanding balance, and currency-grouped
+limit/outstanding/available-credit/utilisation summaries. Outstanding is supplied as a
+reconciled balance; the app never estimates it by adding lifetime purchases, and it never
+adds values from different currencies. Per specification §25, SMS, Gmail, PDF, and rewards
+work begins only after the relevant foundation and data-integrity validation. Host
+validation is complete; device keystore and iOS runtime validation remain blocked (see
+`status.md`).
 
 Database details, pragmas, schema conventions, and migration policy are in
 `docs/database.md`.

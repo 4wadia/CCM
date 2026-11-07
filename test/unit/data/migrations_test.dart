@@ -45,4 +45,40 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('run applies the supplied forward steps', () async {
+    var applied = false;
+
+    await DatabaseMigrations.run(
+      from: 1,
+      to: latestSchemaVersion,
+      steps: {latestSchemaVersion: () async => applied = true},
+    );
+
+    expect(applied, isTrue);
+  });
+
+  test('run refuses a schema newer than this build', () async {
+    await expectLater(
+      DatabaseMigrations.run(
+        from: latestSchemaVersion,
+        to: latestSchemaVersion + 1,
+        steps: const {},
+      ),
+      throwsA(
+        isA<MissingMigrationException>().having(
+          (error) => error.missingVersion,
+          'missingVersion',
+          latestSchemaVersion + 1,
+        ),
+      ),
+    );
+  });
+
+  test('run refuses a downgrade', () async {
+    await expectLater(
+      DatabaseMigrations.run(from: 2, to: 1, steps: const {}),
+      throwsA(isA<SchemaDowngradeException>()),
+    );
+  });
 }

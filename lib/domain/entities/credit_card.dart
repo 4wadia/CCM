@@ -45,6 +45,7 @@ class CreditCard {
     required this.network,
     required this.lastFour,
     required this.creditLimitMinor,
+    this.currentOutstandingMinor = 0,
     required this.currencyCode,
     required this.status,
     required this.createdAt,
@@ -70,6 +71,13 @@ class CreditCard {
 
   /// Credit limit in integer minor units. Never a floating-point value.
   final int creditLimitMinor;
+
+  /// Reconciled current balance in integer minor units.
+  ///
+  /// This is supplied by the user or a future statement reconciliation. It is
+  /// never calculated by adding all lifetime purchases. Defaults to zero for
+  /// cards saved before schema v2.
+  final int currentOutstandingMinor;
 
   /// ISO 4217 currency code.
   final String currencyCode;

@@ -16,6 +16,7 @@ import '../../fakes/in_memory_key_provider.dart';
 
 void main() {
   late Directory tempDir;
+  late File databaseFile;
   late AppDatabase database;
   late BankRepositoryImpl banks;
   late CreditCardRepositoryImpl cards;
@@ -35,6 +36,7 @@ void main() {
     String id = 'card_test',
     CardStatus status = CardStatus.active,
     String displayName = 'Everyday card',
+    int outstandingMinor = 0,
   }) {
     return CreditCard(
       id: id,
@@ -43,6 +45,7 @@ void main() {
       network: CardNetwork.visa,
       lastFour: '4242',
       creditLimitMinor: 25000000,
+      currentOutstandingMinor: outstandingMinor,
       currencyCode: 'INR',
       status: status,
       createdAt: now,
@@ -52,8 +55,9 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('ccm_repository_test');
+    databaseFile = File(p.join(tempDir.path, 'ccm.sqlite'));
     database = await openEncryptedDatabase(
-      file: File(p.join(tempDir.path, 'ccm.sqlite')),
+      file: databaseFile,
       keyProvider: InMemoryKeyProvider(),
       background: false,
     );
@@ -80,6 +84,49 @@ void main() {
     expect(storedCard.network, CardNetwork.visa);
     expect(storedCard.status, CardStatus.active);
     expect(storedCard.currencyCode, 'INR');
+    expect(storedCard.currentOutstandingMinor, 0);
+  });
+
+  test('round-trips the reconciled outstanding balance', () async {
+    await banks.upsert(bank());
+    await cards.upsert(card(outstandingMinor: 125000));
+
+    final stored = await cards.getById('card_test');
+    expect(stored!.currentOutstandingMinor, 125000);
+
+    await cards.upsert(card(outstandingMinor: 0));
+    expect((await cards.getById('card_test'))!.currentOutstandingMinor, 0);
+  });
+
+  test('multiple cards persist across a close and reopen', () async {
+    await banks.upsert(bank());
+    await cards.upsert(card(id: 'card_one', outstandingMinor: 125000));
+    await cards.upsert(
+      card(id: 'card_two', displayName: 'Travel card', outstandingMinor: 5000),
+    );
+
+    await database.close();
+    database = await openEncryptedDatabase(
+      file: databaseFile,
+      keyProvider: InMemoryKeyProvider(),
+      background: false,
+    );
+    cards = CreditCardRepositoryImpl(database);
+
+    final stored = await cards.getAll();
+    expect(stored, hasLength(2));
+    expect(
+      stored
+          .singleWhere((item) => item.id == 'card_one')
+          .currentOutstandingMinor,
+      125000,
+    );
+    expect(
+      stored
+          .singleWhere((item) => item.id == 'card_two')
+          .currentOutstandingMinor,
+      5000,
+    );
   });
 
   test('archive hides a card without deleting it', () async {

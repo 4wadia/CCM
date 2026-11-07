@@ -9,7 +9,7 @@ the source of truth.
 |---|---|---|
 | M0 Environment and foundation | Complete | Toolchain installed; app, router, tests, docs, and debug APK verified |
 | M1 Encrypted database and keys | Implemented (validation partial) | Host encryption/schema/repository tests pass; Android APK builds with SQLCipher and the Keystore channel. On-device keystore and iOS Keychain runtime tests are blocked |
-| M2 Cards and dashboard | Not started | |
+| M2 Cards and dashboard | Complete (host-verified) | Cards, reconciled outstanding balances, currency totals, available credit, utilisation, per-card summaries, archive confirmation, and schema v2. Static analysis clean; 69/69 tests pass; debug APK builds. Device and iOS runtime checks remain blocked |
 | M3 Transaction engine | Not started | |
 | M4 Android SMS | Not started | Needs a physical device and anonymized samples |
 | M5 Gmail | Not started | Needs a Google Cloud project and OAuth client IDs |
@@ -102,6 +102,49 @@ The wrong-key test prints SQLCipher `hmac check failed` and `error decrypting pa
 lines to stderr. Those lines are expected cipher diagnostics, contain no data, and the
 test passes.
 
+## M2 checklist
+
+- [x] `Money` value object plus a maintained ISO 4217 minor-digit table
+- [x] Card add/edit flow backed by bank and card repositories
+- [x] Card identity limited to last four digits; no full number, CVV, or PIN fields
+- [x] Issuer, network, currency, limit, reconciled outstanding, cardholder, reward programme, and billing-day fields
+- [x] Positive credit-limit validation using ISO currency fraction digits
+- [x] Non-negative outstanding validation with per-currency precision
+- [x] Schema v2 `current_outstanding_minor` with a populated v1-to-v2 migration test
+- [x] Archive, restore, and close lifecycle actions without deleting history
+- [x] Archive confirmation dialog
+- [x] Home totals for limit, outstanding, and available credit grouped by currency; unlike currencies are never summed
+- [x] Utilisation omitted when a limit is zero or currencies are not comparable
+- [x] Per-card summaries, loading, error, and empty dashboard states
+- [x] Multiple cards and balances persist across a database close/reopen
+- [x] Offline platform typography; no runtime font fetching
+- [x] Repository-wide `flutter analyze` clean
+- [x] `dart format`, 69/69 tests, and Android debug APK build
+- [ ] Android Keystore device round-trip and iOS build/runtime checks (environment unavailable)
+
+## M2 build and test evidence
+
+| Check | Result |
+|---|---|
+| `dart format --output=none --set-exit-if-changed .` | Pass (80 files, 0 changed) |
+| `flutter analyze` | No issues |
+| `flutter test` | 69/69 pass |
+| `flutter build apk --debug` | Success, 33.9 s warm |
+| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 204 MB |
+| Package / version | `app.creditcardmanager`, `0.1.0+1` |
+| minSdk / targetSdk / compileSdk | 24 / 36 / 36 |
+| Schema | v2, with a populated v1-to-v2 upgrade test |
+| iOS build | Not run (Linux host; requires macOS) |
+| Device tests | Not run (no hardware device; no `/dev/kvm`) |
+
+The dashboard displays a reconciled outstanding balance that the user enters for each
+card. It does not add lifetime purchases to estimate a balance. Transaction- and
+statement-derived balances arrive in M3/M6; when they conflict with the reconciled value,
+both must be preserved for review rather than silently overwriting one.
+
+The wrong-key test still prints SQLCipher `hmac check failed` and `error decrypting page`
+lines to stderr. These are expected cipher diagnostics with no data content.
+
 ## Environment record
 
 | Item | Value |
@@ -135,17 +178,13 @@ test passes.
   equivalent and must be run before each milestone is signed off.
 - **No bank samples yet:** adapters cannot be labeled verified until anonymized SMS and
   statement fixtures exist.
+- **Outstanding is reconciled manually in M2:** the value is persisted exactly and drives
+  available credit and utilisation, but it is not yet produced by transaction or statement
+  reconciliation. M3/M6 must preserve both values when they disagree.
 
 ## Next milestone
 
-M1 is implemented but not fully signed off because runtime keystore validation requires a
-device and iOS validation requires macOS. Pending approval, M2 begins card and dashboard
-work against the existing schema and provider contracts.
-
-M2 — cards and dashboard:
-
-1. Card CRUD screens backed by `CreditCardRepository` and `BankRepository`.
-2. Archive/restore lifecycle, currency, limit, and billing-day validation.
-3. Dashboard aggregates per currency with integer minor units.
-4. Widget and financial-formula tests; Android build.
-5. Formal M1 acceptance only after an on-device keystore round-trip is possible.
+M2 is complete on this host and ready for review. M1 still lacks Android Keystore runtime
+validation and both milestones lack iOS build/runtime validation because the required
+hardware is unavailable. After explicit acceptance of those limits, M3 begins the canonical
+transaction engine, idempotent import, and review queue.

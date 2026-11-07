@@ -1,6 +1,6 @@
 # Database
 
-**Status:** M1. Drift schema v1, SQLCipher encryption, repositories, and the migration
+**Status:** M2. Drift schema v2, SQLCipher encryption, repositories, and the migration
 harness are implemented. Later milestones extend the schema through migrations.
 
 ## Storage engine
@@ -38,12 +38,12 @@ plaintext fallback and no automatic database recreation.
 Production uses `NativeDatabase.createInBackground`; the isolate boundary is covered by
 an integration test. Tests that inspect WAL files directly use `background: false`.
 
-## Schema v1
+## Schema v2
 
 | Table | Purpose |
 |---|---|
 | `banks` | Issuer identity and adapter region |
-| `credit_cards` | Card metadata, limit, billing days, lifecycle |
+| `credit_cards` | Card metadata, limit, reconciled outstanding balance, billing days, lifecycle |
 | `categories` | System and user transaction categories |
 | `transactions` | Canonical transactions; unassigned imports may keep `card_id` null |
 | `transaction_sources` | Raw source provenance and parser metadata |
@@ -53,6 +53,9 @@ an integration test. Tests that inspect WAL files directly use `background: fals
 Important conventions:
 
 - Money is stored as integer minor units. Floating point is prohibited.
+- `credit_cards.current_outstanding_minor` (schema v2) is the user-entered reconciled
+  balance used by the dashboard. It is never computed by summing lifetime purchases
+  (D-19). It defaults to zero when upgrading a v1 database.
 - Calendar dates are stored date-only; audit timestamps are UTC (D-13).
 - `credit_cards.cardholder_name` exists only for statement-password rules.
 - Full card numbers, CVV, and PIN are never stored.
@@ -61,7 +64,7 @@ Important conventions:
 - Sensitive text is protected by whole-database encryption. Columns are not named
   `*_encrypted` because there is no second application-level cipher layer (D-16).
 - `app_settings.encrypted_value` is reserved for values that need protection inside the
-  encrypted database. It is unused in M1; secrets belong in platform secure storage.
+  encrypted database. It is unused so far; secrets belong in platform secure storage.
 
 ## Indexes
 
@@ -85,20 +88,22 @@ database does not reseed.
 ## Migrations
 
 - `latestSchemaVersion` in `lib/data/database/migrations.dart` is the schema version
-  understood by the binary.
-- Each forward change adds one numbered entry to `DatabaseMigrations.stepsFor`.
-- `applyMigrationPlan` applies steps in ascending order and throws
+  understood by the binary; it is now `2`.
+- `AppDatabase.migration` supplies numbered steps that reference Drift's generated table
+  and column objects. The v2 step adds `current_outstanding_minor` with a default of `0`.
+- `DatabaseMigrations.run` rejects downgrades and newer schemas before applying steps.
+  `applyMigrationPlan` applies steps in ascending order and throws
   `MissingMigrationException` rather than opening a mismatched schema.
-- Downgrades are rejected. Destructive column drops are not used without an export path.
-- Real schema upgrades begin when schema v2 lands. The sequencing logic is unit-tested
-  now with synthetic steps.
+- Destructive column drops are not used without an export path.
+- Migration sequencing is unit-tested with synthetic steps. The v2 upgrade is also tested
+  against a populated v1 database created with the old table definition.
 - Every migration must be exercised from a populated database, not only a fresh create.
 
 ## Connection ownership
 
 `appDatabaseProvider` opens the database lazily and closes it when the provider is
-disposed. Repository providers depend on it. M1 does not yet expose data in the UI; the
-cards milestone consumes these providers.
+disposed. Repository providers depend on it, and M2's Cards and Home screens consume those
+repositories. Startup still does not block on key/keystore work.
 
 ## Key handling
 
@@ -126,9 +131,11 @@ implemented until M8.
 - `test/integration/database/encryption_test.dart` verifies cipher activation, plaintext
   absence in database/WAL/SHM, reopen, wrong key, deleted key, and the background isolate.
 - `test/integration/database/schema_test.dart` verifies tables, indexes, seeds, foreign
-  keys, and source uniqueness.
-- `test/integration/database/repositories_test.dart` verifies repository round-trips and
-  card lifecycle.
+  keys, the v2 outstanding column, and source uniqueness.
+- `test/integration/database/migration_v2_test.dart` upgrades a populated v1 database,
+  checks the new column, preserves the card, and round-trips an outstanding balance.
+- `test/integration/database/repositories_test.dart` verifies repository round-trips,
+  multi-card persistence across reopen, and card lifecycle.
 - `test/unit/data/migrations_test.dart` verifies step ordering and fail-loud behavior.
 
 No device or iOS database test has run. See `status.md`.

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shared/theme/app_theme.dart';
 import 'router.dart';
 
 /// Root application widget.
 ///
-/// Visual design is a separate workstream. M0 intentionally uses Material 3
-/// defaults; themes and design tokens are introduced with the design hand-off.
+/// Uses the design-token-based theme system established in Phase 1.
 class CreditCardManagerApp extends ConsumerWidget {
   const CreditCardManagerApp({super.key});
 
@@ -17,17 +17,8 @@ class CreditCardManagerApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Credit Card Manager',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F5C99)),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1F5C99),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       routerConfig: router,
     );
   }

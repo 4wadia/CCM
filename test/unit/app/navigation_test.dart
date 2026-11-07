@@ -1,11 +1,20 @@
 import 'package:credit_card_manager/app/app.dart';
+import 'package:credit_card_manager/features/cards/presentation/providers/card_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: CreditCardManagerApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          creditCardsProvider.overrideWith((ref) async => []),
+          knownBanksProvider.overrideWith((ref) async => []),
+        ],
+        child: const CreditCardManagerApp(),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 

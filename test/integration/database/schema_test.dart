@@ -42,12 +42,12 @@ void main() {
     return rows.map((row) => row.read<String>('name')).toSet();
   }
 
-  test('reports schema version 1', () async {
+  test('reports the latest schema version', () async {
     final version = await database.customSelect('PRAGMA user_version').get();
     expect(version.single.data['user_version'], latestSchemaVersion);
   });
 
-  test('creates every v1 table', () async {
+  test('creates every table', () async {
     final tables = await schemaObjects('table');
 
     expect(
@@ -61,6 +61,16 @@ void main() {
         'import_jobs',
         'app_settings',
       ]),
+    );
+  });
+
+  test('adds the v2 outstanding column', () async {
+    final columns = await database
+        .customSelect('PRAGMA table_info(credit_cards)')
+        .get();
+    expect(
+      columns.map((row) => row.read<String>('name')),
+      contains('current_outstanding_minor'),
     );
   });
 
