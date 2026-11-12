@@ -27,6 +27,17 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // flutter_appauth registers its redirect receiver with this scheme.
+        // Gmail Android OAuth clients use the reversed client id, for example
+        // com.googleusercontent.apps.<client-id>. Override it with the
+        // GMAIL_REDIRECT_SCHEME environment variable or the
+        // -PappAuthRedirectScheme Gradle property.
+        val configuredAppAuthRedirectScheme =
+            System.getenv("GMAIL_REDIRECT_SCHEME")
+                ?: (project.findProperty("appAuthRedirectScheme") as String?)
+        manifestPlaceholders["appAuthRedirectScheme"] =
+            configuredAppAuthRedirectScheme ?: "app.creditcardmanager"
     }
 
     buildTypes {

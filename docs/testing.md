@@ -17,61 +17,115 @@
 | Unit | `test/unit` | `flutter_test`, `mocktail` | Money, calculations, parsers, matching, rules |
 | Widget | `test/unit/...` or feature-local | `flutter_test` | Screen behavior, validation, navigation |
 | Data | `test/integration` | Drift test harness | Encryption, migrations, constraints, rollback |
-| Flow | `test/integration` | `integration_test` | Card → import → match → dashboard |
+| Flow | `test/integration` | `flutter_test` with real repositories | Import → match → review, statement import, backup/restore |
 | Platform | manual scripts | Devices/emulators | Permissions, keychain, background, install/upgrade |
 
-## M0 coverage
+## Coverage through M2
 
-- App boots inside a `ProviderScope`.
-- All five destinations render and are reachable via the bottom navigation bar.
-- Router state is preserved per branch (indexed stack).
-- Provider override works, proving the Riverpod wiring is testable.
-
-No database or network tests exist yet by design.
-
-## M1 coverage
-
+- App boots inside a `ProviderScope`; all five destinations render and are reachable via
+  the bottom navigation bar; router state is preserved per branch.
 - SQLCipher is linked in `flutter test` through the `sqlite3` native-assets hook;
-  `PRAGMA cipher_version` is asserted, so the encryption tests cannot silently run
-  against plain SQLite.
-- A sentinel bank name is written and then searched for in the database, WAL, and SHM
-  files. None may contain the plaintext or a plaintext SQLite header.
-- Closing and reopening with the same key preserves data; a wrong key and a deleted key
-  both fail with typed errors. A database whose `user_version` is newer than this build
-  is refused rather than opened against an unknown schema.
-- The production `NativeDatabase.createInBackground` path is exercised, not just the
-  direct-connection test path.
-- Schema tests assert every v1 table and index, 12 seeded categories, foreign-key
-  enforcement, and unique transaction source references.
+  `PRAGMA cipher_version` is asserted, so encryption tests cannot silently run against
+  plain SQLite.
+- A sentinel is written and searched for in the database, WAL, and SHM files. None may
+  contain the plaintext or a plaintext SQLite header.
+- Closing and reopening with the same key preserves data; wrong and deleted keys fail with
+  typed errors. A database whose `user_version` is newer than this build is refused.
+- The production `NativeDatabase.createInBackground` path is exercised.
+- Schema tests assert every table/index, 12 seeded categories, foreign-key enforcement,
+  and unique transaction source references.
 - Repository tests cover bank/card round-trips, archive/restore/close, settings upsert and
-  removal, and custom categories.
+  removal, custom categories, and multi-card persistence across reopen.
 - Migration sequencing is unit-tested for order, no-op, downgrade rejection, and a missing
-  step. A populated v1 database is upgraded to v2 and checked for the new outstanding
-  column, preserved card data, and default value.
-- The Dart side of the key channel is tested with a mock binary messenger for valid,
-  wrong-length, malformed, platform-error, and delete responses.
-- No tests are skipped. The expected SQLCipher stderr lines from the wrong-key test are
-  diagnostics, not failures.
-- Android and iOS native key stores are compiled/validated only as far as this host
-  allows: Android is compiled by the debug APK build; iOS is not compiled.
+  step. A populated v1 database is upgraded and checked.
+- Pure-domain tests group card limits, outstanding, available credit, and utilisation by
+  currency; archived/closed cards are excluded and mixed currencies are never added.
+- Money tests cover integer minor-unit parsing/formatting, precision, malformed input,
+  zero limits, non-negative balances, and unlike-currency arithmetic guards.
+- Widget tests cover Home totals, per-card summaries, add/edit validation, outstanding
+  persistence, archive confirmation, and last-four-only identity fields.
 
-## M2 coverage
+## Coverage M3–M10
 
-- Pure-domain tests group active card limits, outstanding balances, available credit, and
-  utilisation by currency; archived/closed cards are excluded and mixed currencies are
-  never added together. Overall utilisation is omitted when currencies are mixed.
-- Money tests cover exact integer minor-unit parsing and formatting for zero-, two-,
-  three-, and four-fraction-digit currencies, invalid precision, malformed input, zero
-  limits, non-negative balances, and unlike-currency arithmetic guards.
-- Zero-limit utilisation is asserted to be `null`; over-limit utilisation remains a
-  derived percentage above 100 rather than silently clamping the money values.
-- Widget tests cover Home currency totals, outstanding/available credit, utilisation,
-  per-card summaries, the last-four-only identity fields, add/edit form validation,
-  outstanding persistence, and archive confirmation.
-- Encrypted repository tests cover card persistence, outstanding round-trips, multiple
-  cards surviving a close/reopen, and archive/restore/close lifecycle.
-- The v2 migration test upgrades a populated v1 database rather than only creating a
-  fresh schema.
+### Transactions and imports
+
+- Fingerprint tests cover determinism, day-only normalization, merchant noise, version
+  changes, card/amount/currency/type sensitivity, and null card behavior.
+- Card-matcher tests cover unique suffix, masked input, issuer-hint disambiguation,
+  ambiguous candidates, unmatched cards, archived cards, and issuer-only matching.
+- Import-pipeline tests use the real encrypted database and repositories to cover:
+  high-confidence import with provenance, exact duplicate fingerprint linking, idempotent
+  source references, ambiguous/unmatched cards, low-confidence review, empty imports, and
+  archived-card exclusion.
+- Transaction repository tests cover atomic transaction/source insert, filters (card,
+  review-only, unassigned, type, date, amount, merchant, source), category/merchant/card/
+  status updates, fingerprint lookup, fuzzy candidates, source linking, and deletion.
+- Review repository tests cover add/deduplicate, open count/list, resolve-for-entity,
+  resolve, dismiss, and delete-all.
+
+### SMS
+
+- Synthetic SMS tests cover purchases with amount/merchant/date/card, amount-before-
+  currency, timestamp fallback, OTP/promotional exclusion, declined alerts, refunds,
+  payments, cash advances, fees, and malformed/zero-amount messages.
+- Regression tests cover `refunded`/`reversed` recognition and merchant extraction
+  stopping at `using`/`with`.
+- No real SMS corpus or device permission test exists.
+
+### Gmail and email classification
+
+- Classifier tests cover PDF + statement subject + known issuer + card suffix, PDF-only
+  candidates, unrelated email, and non-PDF attachments.
+- Gmail sync is implemented with fakeable client/token interfaces, but real OAuth and
+  network sync are not exercised because no Google Cloud project is configured.
+
+### PDF statements
+
+- Password-strategy tests cover user-provided passwords, name + birth date, month-name
+  formats, customer ID + date, card suffix + date, inactive/invalid rules, missing inputs,
+  and deduplication.
+- Statement-parser tests cover metadata, date/period/due-date extraction, total/minimum/
+  previous balance, table-like rows, refund/fee markers, undated fallback rows, currency
+  and card defaults, and summary-line skipping.
+- Encrypted-file tests cover opaque names, ciphertext at rest, round-trip, unique names,
+  wrong-key authentication failure, path traversal rejection, deletion, and key-loss
+  failure.
+- Statement-import integration tests cover successful extraction/matching/reconciliation,
+  rule-derived password retry, duplicate file hash, password-protected fallback review,
+  extraction-failure fallback, total mismatch review, unmatched-card review, and invalid/
+  oversized/non-PDF input.
+- Real bank statement fixtures are not available; the generic parser is not labelled as
+  verified for any bank.
+
+### Rewards and analytics
+
+- Reward-calculator tests cover percentage basis points, flat cashback, monthly caps,
+  exhausted caps, ineligible credits/payments/refunds, zero/negative purchases, currency
+  mismatch, category/merchant eligibility, labelled point estimates, and expired points.
+- Repository tests cover cashback rules/entries, reward accounts/entries, and deletion.
+- Widget tests cover cashback summary, reward accounts, rule descriptions, and recent
+  entries.
+
+### Backup and wipe
+
+- Backup tests cover encrypted output with no plaintext merchant/email/token/file name,
+  manifest counts, restore/re-encrypt statement files, removal of stale transactions,
+  token removal, wrong-password rejection without data change, short-password rejection,
+  malformed/tampered envelopes, table allow-list, and stable magic.
+- Local wipe is covered by implementation review and settings UI; device-level deletion
+  still needs a physical-device check.
+
+### Widget coverage
+
+`test/unit/features/feature_pages_test.dart` covers:
+
+- Transactions: review banner, ledger list, filter sheet, transaction detail, sources,
+  review queue, assign/resolve/dismiss controls.
+- Statements: statement list, totals, review status, detail sheet, extracted rows.
+- Rewards: cashback totals, reward accounts, declarative rules, recent entries.
+- Settings: local-only messaging, Gmail-disabled state, Android SMS controls, backup
+  explanation, import history, and footer.
+- Card detail: metrics, recent transactions, reward points, billing days, and navigation.
 
 ## Commands
 
@@ -79,23 +133,28 @@ No database or network tests exist yet by design.
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
-flutter test integration_test        # when integration tests exist
+flutter build apk --debug
 ```
 
-## Planned coverage by milestone
+`./tool/check.sh` runs the local gate.
 
-| Milestone | Required tests |
+## Current result
+
+- `dart format`: clean.
+- `flutter analyze`: no issues.
+- `flutter test`: 165/165 pass on the Linux host.
+- `flutter build apk --debug`: success; APK at
+  `build/app/outputs/flutter-apk/app-debug.apk`.
+
+## Required but not run
+
+| Check | Reason |
 |---|---|
-| M1 | Encryption at rest, reopen, FKs, migrations, rollback, wrong/corrupt key |
-| M2 | Currency-grouped limits, minor-unit conversion, mixed currency, zero limit, card CRUD/archive |
-| M3 | Fingerprint stability, idempotent re-import, ambiguity → review, filters |
-| M4 | Synthetic SMS corpus, OTP exclusion, permission denied, no content in logs |
-| M5 | MIME parsing, discovery confidence, token absence, resumable sync |
-| M6 | Password strategies, corrupt/oversized PDFs, totals validation, reconciliation |
-| M7 | Cashback caps, reversals, expiry boundaries, labeled estimates |
-| M8 | Backup round-trip, wrong password, tamper detection, failed restore safety |
-| M9 | iOS keychain, background delay, TestFlight smoke |
-| M10 | Regression matrix, upgrade paths, permission matrix |
+| iOS build, Keychain, TestFlight | No macOS host |
+| Android Keystore/SMS/permission runtime | No physical device; no `/dev/kvm` |
+| Real Gmail OAuth/sync | Requires Google Cloud project, client ID, test users |
+| Verified bank SMS/PDF adapters | Requires anonymized real-world samples |
+| Release signing/store install | Owner-supplied credentials |
 
 ## Fixture policy
 

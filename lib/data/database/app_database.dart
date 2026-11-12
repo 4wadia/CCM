@@ -33,6 +33,16 @@ const List<String> databaseIndexStatements = <String>[
     TransactionSources,
     ImportJobs,
     AppSettings,
+    ReviewItems,
+    Statements,
+    StatementTransactions,
+    CashbackEntries,
+    CashbackRules,
+    RewardAccounts,
+    RewardEntries,
+    BankRules,
+    EmailAccounts,
+    SyncCheckpoints,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -59,6 +69,29 @@ class AppDatabase extends _$AppDatabase {
               creditCards.currentOutstandingMinor,
             );
           },
+          3: () async {
+            // createAll() creates only tables that do not already exist. Existing
+            // v2 tables keep their data; the additive columns below are applied
+            // independently so both v1 and v2 databases upgrade safely.
+            await migrator.createAll();
+            await _addColumnIfMissing(
+              'transactions',
+              'fingerprint',
+              'TEXT NULL',
+            );
+            await _addColumnIfMissing(
+              'transactions',
+              'fingerprint_version',
+              'INTEGER NULL',
+            );
+            await _addColumnIfMissing(
+              'transaction_sources',
+              'source_date',
+              'INTEGER NULL',
+            );
+            await _createIndexes();
+            await _seedSystemCategories();
+          },
         },
       ),
       beforeOpen: (details) async {
@@ -66,6 +99,20 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('PRAGMA foreign_keys = ON');
       },
     );
+  }
+
+  Future<void> _addColumnIfMissing(
+    String table,
+    String column,
+    String definition,
+  ) async {
+    final info = await customSelect('PRAGMA table_info($table)').get();
+    final exists = info.any((row) => row.read<String>('name') == column);
+    if (!exists) {
+      await customStatement(
+        'ALTER TABLE $table ADD COLUMN $column $definition',
+      );
+    }
   }
 
   Future<void> _createIndexes() async {

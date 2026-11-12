@@ -64,6 +64,45 @@ void main() {
     );
   });
 
+  test(
+    'creates the v3 transaction, statement, review, and reward tables',
+    () async {
+      final tables = await schemaObjects('table');
+
+      expect(
+        tables,
+        containsAll(<String>[
+          'import_jobs',
+          'review_items',
+          'statements',
+          'statement_transactions',
+          'cashback_entries',
+          'cashback_rules',
+          'reward_accounts',
+          'reward_entries',
+          'bank_rules',
+          'email_accounts',
+          'sync_checkpoints',
+        ]),
+      );
+    },
+  );
+
+  test('adds the v3 fingerprint and source-date columns', () async {
+    Future<Set<String>> columns(String table) async {
+      final rows = await database
+          .customSelect('PRAGMA table_info($table)')
+          .get();
+      return rows.map((row) => row.read<String>('name')).toSet();
+    }
+
+    expect(
+      await columns('transactions'),
+      containsAll(<String>['fingerprint', 'fingerprint_version']),
+    );
+    expect(await columns('transaction_sources'), contains('source_date'));
+  });
+
   test('adds the v2 outstanding column', () async {
     final columns = await database
         .customSelect('PRAGMA table_info(credit_cards)')

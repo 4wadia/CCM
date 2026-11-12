@@ -5,6 +5,7 @@ import '../features/cards/presentation/pages/cards_page.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/rewards/presentation/pages/rewards_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/statements/presentation/pages/statements_page.dart';
 import '../features/transactions/presentation/pages/transactions_page.dart';
 import 'app_shell.dart';
 
@@ -15,6 +16,7 @@ abstract final class AppRoutes {
   static const String transactions = '/transactions';
   static const String rewards = '/rewards';
   static const String settings = '/settings';
+  static const String statements = '/statements';
 }
 
 /// Router owned by Riverpod so tests and features can override navigation.
@@ -67,6 +69,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.statements,
+        builder: (context, state) => const StatementsPage(),
       ),
     ],
   );

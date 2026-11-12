@@ -2,8 +2,10 @@
 
 Local-first, cross-platform credit card management application built with Flutter.
 
-**Status:** M2 — encrypted cards, reconciled balances, and a currency-aware dashboard
-implemented (host-verified; device and iOS runtime validation pending)
+**Status:** M3–M10 host-verified implementation — transactions, Android SMS, Gmail
+statement sync, encrypted PDF processing, rewards, encrypted backup/restore, and local
+wipe are implemented. iOS, physical-device, real-OAuth, and verified bank-fixture
+validation remain pending.
 **Specification:** `../credit_card_manager_technical_specification.md`
 **Implementation plan:** `../credit_card_manager_implementation_plan.md`
 
@@ -16,7 +18,9 @@ An Android and iOS application that keeps all financial data on-device:
 - Local, password-protected PDF statement processing.
 - Duplicate-safe reconciliation with full source provenance.
 - Cashback, rewards, spending analytics, and payment reminders.
-- Encrypted local database, encrypted backup, and encrypted statement storage.
+- Encrypted local database, encrypted statement storage, and password-protected
+  `.ccmbackup` export/restore.
+- Full local wipe of the database, statement files, keys, and OAuth tokens.
 
 There is no backend, cloud database, analytics SDK, or remote processing of financial data.
 
@@ -49,6 +53,18 @@ flutter build apk --debug
 ./tool/check.sh          # format check + analyze + tests + debug build
 ```
 
+Gmail is optional and disabled unless configured at build time:
+
+```bash
+flutter build apk --debug \
+  --dart-define=GMAIL_CLIENT_ID=<client-id>.apps.googleusercontent.com \
+  --dart-define=GMAIL_REDIRECT_URI=com.googleusercontent.apps.<client-id>:/oauth2redirect
+```
+
+For Android, also set the `flutter_appauth` redirect scheme with
+`GMAIL_REDIRECT_SCHEME=com.googleusercontent.apps.<client-id>` (or the
+`-PappAuthRedirectScheme` Gradle property). See [`docs/release.md`](docs/release.md).
+
 ## Project layout
 
 ```text
@@ -68,6 +84,18 @@ test/
 ```
 
 Architecture rules and dependency direction: [`docs/architecture.md`](docs/architecture.md).
+Import-source behavior and bank-adapter limits: [`docs/bank-adapters.md`](docs/bank-adapters.md).
+
+## Verification
+
+On this Linux host: `dart format` is clean, `flutter analyze` reports no issues,
+`flutter test` passes 165/165, and `flutter build apk --debug` succeeds. The debug APK is
+at `build/app/outputs/flutter-apk/app-debug.apk`.
+
+Not validated here: iOS build/Keychain/TestFlight (no macOS host), Android device
+permissions/Keystore/file picker (no device or `/dev/kvm`), real Gmail OAuth (no Google
+Cloud project), and verified bank SMS/PDF adapters (no anonymized fixtures). See
+[`docs/status.md`](docs/status.md).
 
 ## Security rules (non-negotiable)
 
@@ -80,6 +108,7 @@ Architecture rules and dependency direction: [`docs/architecture.md`](docs/archi
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md)
+- [`docs/bank-adapters.md`](docs/bank-adapters.md)
 - [`docs/database.md`](docs/database.md)
 - [`docs/security.md`](docs/security.md)
 - [`docs/status.md`](docs/status.md)

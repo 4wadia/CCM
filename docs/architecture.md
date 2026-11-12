@@ -1,8 +1,10 @@
 # Architecture
 
-**Status:** M2 — encrypted persistence, schema v2, card management, and the home
-dashboard are in place. Cards and Home consume repositories through Riverpod; later
-feature modules must preserve these boundaries.
+**Status:** M3–M10 are implemented and host-verified. Cards, Home, Transactions,
+Statements, Rewards, and Settings consume repositories through Riverpod. Android SMS,
+Gmail statement sync, encrypted PDF import, encrypted backup/restore, and local wipe are
+wired. iOS, physical-device, real-OAuth, and verified bank-fixture validation remain
+blocked by the environment (see `status.md`).
 
 ## Layers
 
@@ -28,36 +30,43 @@ Rules:
 - Domain imports no Flutter widgets, no Drift generated code, no Android/iOS APIs.
 - Presentation never runs SQL, parses SMS/PDFs, or performs financial arithmetic.
 - Data implements domain repository interfaces; the domain never knows Drift exists.
-- Native code is reached through a versioned interface (Pigeon where practical).
+- Native code is reached through a versioned interface (method channels where practical).
 - Repositories return domain entities, not database rows.
+- Imported records are never silently discarded. Unmatched, ambiguous, low-confidence,
+  failed, or non-reconciling records become review items with source provenance.
 
 ## Feature modules
 
-Each feature uses only the layers it needs:
-
 ```text
 features/<name>/
-  data/          datasources, models, repository implementations
-  domain/        entities, repository interfaces, use cases
   presentation/  pages, widgets, providers
 ```
 
-Empty layers are not created for symmetry.
+Feature modules consume domain repositories/services through `lib/app/providers.dart` and
+feature providers. Empty layers are not created for symmetry.
+
+| Feature | Responsibility |
+|---|---|
+| Home | Currency-grouped limits/outstanding/available, recent activity, cashback, reward points, review banner, Gmail status |
+| Cards | Card CRUD, lifecycle, metrics, recent transactions, reward account, navigation |
+| Transactions | Filtered ledger, add/edit, detail, card assignment, review queue, CSV export |
+| Statements | Encrypted PDF import, statement list/detail, extracted transactions, review indicators |
+| Rewards | Cashback summary/entries, reward accounts, point adjustments, declarative cashback rules |
+| Settings | Gmail connect/sync/disconnect, Android SMS import, PDF import, CSV export, encrypted backup/restore, import history, full local wipe |
 
 ## Application bootstrap
 
 ```text
 main.dart
-  └─ bootstrap.dart      error handling, ProviderScope, future app-wide init
+  └─ bootstrap.dart      error handling, ProviderScope
        └─ app.dart       MaterialApp.router
-            └─ router.dart  GoRouter, StatefulShellRoute with 5 destinations
+            └─ router.dart  GoRouter, StatefulShellRoute + Statements route
 ```
 
-M0 has no database, network, or platform initialization. M1 adds a lazily-opened
-encrypted database and repository providers in `lib/app/providers.dart`. M2's Cards and
-Home features consume only the card and bank repositories; the database remains lazy, so
-startup does not block on key/keystore work. Network and SMS/PDF/OAuth hooks belong in
-`bootstrap.dart` and are added only when the owning milestone lands.
+`lib/app/providers.dart` owns the lazy database and every repository/service provider:
+transactions, imports, reviews, statements, cashback, rewards, email accounts, bank rules,
+SMS, PDF extraction, Gmail OAuth/client/sync, backup, and local wipe. Startup does not
+block on key/keystore work; the encrypted database opens when a provider first needs it.
 
 ## Navigation
 
@@ -69,8 +78,9 @@ Five top-level destinations from the specification §17.1:
 4. Rewards
 5. Settings
 
-`StatefulShellRoute.indexedStack` preserves per-tab state. Feature pages are registered
-as branches so deep links and future nested routes do not require a router rewrite.
+`StatefulShellRoute.indexedStack` preserves per-tab state. `/statements` is a top-level
+route reachable from Settings and card detail, so statement review does not replace the
+Transactions tab.
 
 ## State management
 
@@ -80,46 +90,69 @@ Riverpod is the only state/dependency mechanism:
 - Widgets watch focused providers; they do not hold business state in `setState`.
 - Tests override providers instead of mocking widget internals.
 - Provider lifetimes are explicit; nothing is `keepAlive` without a reason.
+- Shared widget-test overrides live in `test/fakes/test_overrides.dart`.
 
-## Errors
+## Import pipeline
 
-- Domain and data return typed failures (`core/errors`), not raw exceptions, at boundaries.
-- Stable error codes use the `CCM-<DOMAIN>-<NNN>` format with a safe user message and a
-  diagnostic that contains no sensitive content.
-- Imports that cannot be fully resolved create review-queue records instead of dropping data.
+All import sources converge on `ImportService`:
+
+1. Parse source-specific input into `ParsedTransaction` records.
+2. Compute a versioned SHA-256 fingerprint from card, signed amount, currency, posting day,
+   normalized merchant, and transaction type.
+3. Link an exact fingerprint match to the existing transaction and record source provenance.
+4. Run a conservative fuzzy check (merchant similarity plus date window). Amount alone
+   never merges records.
+5. Match cards by last four and issuer hint. Multiple remaining candidates are ambiguous;
+   the service never guesses.
+6. Create a review item for unmatched, ambiguous, low-confidence, or ambiguous-duplicate
+   records while retaining the canonical transaction/source row.
+7. Update import-job counters idempotently.
+
+Statement import adds validation, AES-256-GCM encrypted file storage, password-rule
+resolution, PDF text extraction, parsing, card matching, transaction import, statement-row
+persistence, and total reconciliation. Gmail sync feeds PDF attachments into the same
+statement pipeline. Android SMS feeds parsed alerts into the same import pipeline.
+
+## Errors and review
+
+- Domain and data return typed failures (`core/errors`) at boundaries.
+- Stable error codes use `CCM-<DOMAIN>-<NNN>` with a safe user message and a diagnostic
+  that contains no sensitive content.
+- Review items are the explicit home for uncertainty. `ReviewRepository` supports open,
+  resolved, and dismissed states; resolving a transaction review also clears related items.
+- Backup restore validates the envelope and table allow-list before replacing data.
 
 ## Logging
 
 - `core/logging` is the only logging entry point.
 - Sensitive values are never passed as log arguments. Call sites log identifiers and
   status codes, not payloads.
-- A log-capture test asserts that fixtures' secrets never appear in output.
+- SMS bodies, email bodies, PDF text, passwords, OAuth tokens, keys, full card numbers,
+  CVV, and PIN are never logged.
 
 ## Platform channels
 
-Planned integrations and their owning milestone:
-
-| Channel | Milestone |
+| Channel | Status |
 |---|---|
 | Keystore / Keychain key store (`app.creditcardmanager/security`) | Implemented M1 |
-| SMS read + permission | M4 |
-| OAuth broker / secure token storage | M5 |
-| Background tasks | M5/M10 |
+| SMS read + permission (`app.creditcardmanager/sms`) | Implemented M4, Android only |
+| OAuth broker / secure token storage | Implemented M5 via `flutter_appauth` + `flutter_secure_storage` |
+| PDF extraction | Implemented M6 via `syncfusion_flutter_pdf` |
+| Background tasks | Not implemented; sync is user-triggered |
 
-Channels are versioned and expose the minimum surface. No channel returns bulk SMS,
-email, or PDF content to callers that do not need it.
+Channels expose the minimum surface. iOS deliberately reports SMS import as unsupported;
+the app never claims access to the iOS SMS inbox.
 
 ## Milestone boundaries
 
-M0 intentionally contains **no** database, SMS, Gmail, PDF, reward, or networking code.
-M1 adds the encrypted database, schema v1, repositories, key integration, and tests. M2
-adds card management, schema v2's reconciled outstanding balance, and currency-grouped
-limit/outstanding/available-credit/utilisation summaries. Outstanding is supplied as a
-reconciled balance; the app never estimates it by adding lifetime purchases, and it never
-adds values from different currencies. Per specification §25, SMS, Gmail, PDF, and rewards
-work begins only after the relevant foundation and data-integrity validation. Host
-validation is complete; device keystore and iOS runtime validation remain blocked (see
-`status.md`).
+M0 contains the app shell, router, tests, and docs. M1 adds encrypted persistence and keys.
+M2 adds card management and schema v2. M3 adds the canonical transaction ledger, idempotent
+import, source provenance, and review queue. M4 adds permission-gated Android SMS import.
+M5 adds Gmail OAuth and statement-email sync. M6 adds encrypted PDF statement processing
+and declarative password rules. M7 adds integer cashback/reward calculations and analytics.
+M8 adds encrypted logical backup/restore and full local wipe. M9/M10 remain limited by the
+absence of macOS and device hardware.
 
 Database details, pragmas, schema conventions, and migration policy are in
-`docs/database.md`.
+`docs/database.md`. Integration boundaries and bank-adapter limits are in
+`docs/bank-adapters.md`.

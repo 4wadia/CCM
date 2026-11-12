@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 ///
 /// Increment when a table or index changes. Add the matching step at the
 /// database's migration strategy in the same change.
-const int latestSchemaVersion = 2;
+const int latestSchemaVersion = 3;
 
 /// One forward migration step.
 typedef MigrationStep = Future<void> Function();

@@ -52,7 +52,7 @@ void main() {
     await DatabaseMigrations.run(
       from: 1,
       to: latestSchemaVersion,
-      steps: {latestSchemaVersion: () async => applied = true},
+      steps: {2: () async {}, latestSchemaVersion: () async => applied = true},
     );
 
     expect(applied, isTrue);

@@ -1,7 +1,7 @@
 # Project status
 
-Updated at the end of each milestone. The specification and implementation plan remain
-the source of truth.
+Updated after the M3–M10 implementation pass. The specification and implementation plan
+remain the source of truth.
 
 ## Milestones
 
@@ -9,15 +9,33 @@ the source of truth.
 |---|---|---|
 | M0 Environment and foundation | Complete | Toolchain installed; app, router, tests, docs, and debug APK verified |
 | M1 Encrypted database and keys | Implemented (validation partial) | Host encryption/schema/repository tests pass; Android APK builds with SQLCipher and the Keystore channel. On-device keystore and iOS Keychain runtime tests are blocked |
-| M2 Cards and dashboard | Complete (host-verified) | Cards, reconciled outstanding balances, currency totals, available credit, utilisation, per-card summaries, archive confirmation, and schema v2. Static analysis clean; 69/69 tests pass; debug APK builds. Device and iOS runtime checks remain blocked |
-| M3 Transaction engine | Not started | |
-| M4 Android SMS | Not started | Needs a physical device and anonymized samples |
-| M5 Gmail | Not started | Needs a Google Cloud project and OAuth client IDs |
-| M6 PDF and adapters | Not started | Needs statement fixtures and a PDF library decision |
-| M7 Rewards and analytics | Not started | |
-| M8 Backup and restore | Not started | |
+| M2 Cards and dashboard | Complete (host-verified) | Cards, reconciled outstanding balances, currency totals, available credit, utilisation, per-card summaries, archive confirmation, and schema v2 |
+| M3 Transaction engine | Implemented (host-verified) | Canonical ledger, filters, source provenance, fingerprints, idempotent import, review queue, card assignment, CSV export |
+| M4 Android SMS | Implemented (host-verified) | Permission-gated method channel, synthetic parser tests, import checkpointing, review fallback. No device or real-sample validation |
+| M5 Gmail | Implemented (host-verified) | Native PKCE OAuth, secure token storage, classifier, statement sync, checkpoints, review fallback. Real OAuth not exercised |
+| M6 PDF and adapters | Implemented (host-verified) | Encrypted PDF storage, Syncfusion extraction, declarative password rules, generic parser, reconciliation. No verified bank fixtures |
+| M7 Rewards and analytics | Implemented (host-verified) | Integer cashback calculator, basis-point rules, caps, reward accounts/entries, point estimates, analytics, rewards UI |
+| M8 Backup and restore | Implemented (host-verified) | Encrypted `.ccmbackup` create/restore, Argon2id + AES-256-GCM, statement re-encryption, token cleanup, local wipe |
 | M9 iOS validation | Blocked | Requires a macOS host |
-| M10 Release hardening | Not started | Needs signing identities and store accounts |
+| M10 Release hardening | Partially implemented | UI, docs, tests, and debug build complete. Signing identities, store accounts, and device validation are owner/environment-blocked |
+
+## Current verification
+
+| Check | Result |
+|---|---|
+| `dart format` | Clean |
+| `flutter analyze` | No issues |
+| `flutter test` | 165/165 pass |
+| `flutter build apk --debug` | Success |
+| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 213 MB debug build |
+| Schema | v3, with v1/v2 forward migrations |
+| Host cipher | SQLCipher `4.19.0 community` |
+| Android APK cipher | `libsqlcipher.so` linked for shipped ABIs |
+| iOS build | Not run (Linux host; requires macOS) |
+| Device tests | Not run (no hardware device; no `/dev/kvm`) |
+
+The wrong-key test prints SQLCipher `hmac check failed` and `error decrypting page` lines
+to stderr. These are expected cipher diagnostics with no data content and the test passes.
 
 ## M0 checklist
 
@@ -30,77 +48,28 @@ the source of truth.
 - [x] Riverpod `3.4.3` wired at the root
 - [x] GoRouter `18.1.3` with five destinations and state-preserving shell
 - [x] Strict analysis options and formatting
-- [x] `flutter analyze` clean
-- [x] 5 unit/widget tests passing
 - [x] Architecture, testing, security, release, and decision docs
 - [x] `tool/check.sh` verification gate
-- [x] Git repository initialized with the M0 commit
+- [x] Git repository initialized
 - [x] Debug APK built and inspected
 - [ ] iOS build (requires macOS)
-
-## M0 build evidence
-
-| Check | Result |
-|---|---|
-| `dart format --set-exit-if-changed .` | Pass (15 files, no changes) |
-| `flutter analyze` | No issues |
-| `flutter test` | 5/5 pass |
-| `flutter build apk --debug` | Success, 637 s cold / 7 s warm |
-| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 157 MB |
-| Package | `app.creditcardmanager`, version `0.1.0+1` |
-| Label | `Credit Card Manager` |
-| compileSdk / targetSdk | 36 / 36 |
-| iOS build | Not run (no macOS host) |
-
-Flutter installed NDK `28.2.13676358` automatically on the first Android build.
 
 ## M1 checklist
 
 - [x] SQLCipher selected and enabled through the `sqlite3` 3.x hook
-- [x] `sqlcipher_flutter_libs` removed (obsolete with `sqlite3` 3.x)
 - [x] Fail-closed `cipher_version` check and wrong-key rejection
 - [x] Android Keystore AES-256-GCM key wrapping (`SecurityChannel.kt`)
 - [x] iOS Keychain device-only key storage in `AppDelegate.swift`
 - [x] Typed `DatabaseKeyProvider` failure handling; no automatic key recreation
-- [x] Schema v1: banks, cards, categories, transactions, sources, import jobs, settings
-- [x] Required indexes, foreign keys, secure delete, WAL
+- [x] Schema v1 and required indexes, foreign keys, secure delete, WAL
 - [x] Idempotent system-category seeding
 - [x] Forward-migration harness that fails loudly on a missing step
-- [x] Domain entities and repositories for banks, cards, categories, and settings
-- [x] Riverpod database and repository providers (lazy; not yet consumed by UI)
-- [x] Android backup disabled and all data domains excluded from transfer
+- [x] Riverpod database and repository providers
+- [x] Android backup disabled and data domains excluded from transfer
 - [x] Encryption-at-rest test covering database, WAL, and SHM files
 - [x] Reopen, wrong-key, deleted-key, and background-isolate tests
-- [x] `dart format`, `flutter analyze`, `flutter test`, and debug APK build
-- [x] Security, database, architecture, testing, and decision docs updated
 - [ ] Android Keystore round-trip on a device or emulator (no `/dev/kvm`, no device)
 - [ ] iOS build and Keychain runtime test (no macOS host)
-
-## M1 build and test evidence
-
-| Check | Result |
-|---|---|
-| `dart format --set-exit-if-changed .` | Pass (45 files, 0 changed) |
-| `flutter analyze` | No issues |
-| `flutter test` | 35/35 pass |
-| `flutter build apk --debug` | Success, 65.8 s warm |
-| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 223 MB |
-| Package / version | `app.creditcardmanager`, `0.1.0+1` |
-| minSdk / targetSdk / compileSdk | 24 / 36 / 36 |
-| Cipher in host tests | SQLCipher `4.19.0 community` |
-| Cipher in APK | `libsqlcipher.so` for arm64-v8a, armeabi-v7a, x86_64 |
-| Manifest | `allowBackup=false`; `dataExtractionRules` resource present |
-| Kotlin channel | `SecurityChannel` present in `classes5.dex` |
-| iOS build | Not run (no macOS host) |
-| Device tests | Not run (no hardware device; no `/dev/kvm`) |
-
-The Android build installed SDK Platform 35 and CMake 3.22.1 automatically to compile
-the SQLCipher native asset. The debug APK is large because it contains Flutter debug
-artifacts for all ABIs; this is not a release-size measurement.
-
-The wrong-key test prints SQLCipher `hmac check failed` and `error decrypting page`
-lines to stderr. Those lines are expected cipher diagnostics, contain no data, and the
-test passes.
 
 ## M2 checklist
 
@@ -113,37 +82,120 @@ test passes.
 - [x] Schema v2 `current_outstanding_minor` with a populated v1-to-v2 migration test
 - [x] Archive, restore, and close lifecycle actions without deleting history
 - [x] Archive confirmation dialog
-- [x] Home totals for limit, outstanding, and available credit grouped by currency; unlike currencies are never summed
+- [x] Home totals grouped by currency; unlike currencies are never summed
 - [x] Utilisation omitted when a limit is zero or currencies are not comparable
 - [x] Per-card summaries, loading, error, and empty dashboard states
 - [x] Multiple cards and balances persist across a database close/reopen
 - [x] Offline platform typography; no runtime font fetching
-- [x] Repository-wide `flutter analyze` clean
-- [x] `dart format`, 69/69 tests, and Android debug APK build
-- [ ] Android Keystore device round-trip and iOS build/runtime checks (environment unavailable)
 
-## M2 build and test evidence
+## M3 checklist
 
-| Check | Result |
+- [x] Schema v3 transaction fingerprint columns and source date
+- [x] `CardTransaction`, `TransactionSource`, filter, and review entities
+- [x] `TransactionRepository` with search/count/recent, atomic insert+source, updates, fingerprint lookup, fuzzy candidates, source linking, and deletion
+- [x] `ImportJobRepository` and `ReviewRepository` with idempotent job counters and review lifecycle
+- [x] SHA-256 versioned fingerprinting over card, signed amount, currency, day, normalized merchant, and type
+- [x] Merchant normalization and conservative fuzzy matching
+- [x] Category classification and card matching by last four/issuer with no guessing on ambiguity
+- [x] Import service that never silently discards records
+- [x] Transaction list, filters, add/edit/detail sheets, card assignment, review banner/queue, and CSV export
+- [x] Unit/integration/widget coverage
+
+## M4 checklist
+
+- [x] Android `READ_SMS` manifest permission and runtime request
+- [x] `SmsChannel.kt` read-only query with sender/body/date/ID only
+- [x] `MethodChannelSmsPlatform`; iOS returns unsupported
+- [x] Generic conservative SMS parser with OTP/promotional exclusion, purchase/refund/payment/cash-advance/fee detection, and declined status
+- [x] SMS import service with permission gate, lookback window, checkpoint, and unparsed-message review
+- [x] Synthetic SMS parser tests
+- [x] Settings permission/import controls
+- [ ] Physical-device permission/runtime validation
+- [ ] Verified bank SMS adapters (requires anonymized samples)
+
+## M5 checklist
+
+- [x] Build-time Gmail client configuration; no client secret in source
+- [x] Native Authorization Code + PKCE through `flutter_appauth`
+- [x] Secure token storage through `flutter_secure_storage`; opaque DB reference only
+- [x] Gmail client with pagination, MIME attachment discovery, retries, and typed failures
+- [x] Statement-email classifier using metadata only
+- [x] Sync checkpoints and import-job accounting
+- [x] Encrypted PDF attachment import into the statement pipeline
+- [x] Low-confidence/no-PDF/oversized/failed attachment review records
+- [x] Connect/sync/disconnect UI and remote-revocation fallback
+- [x] Email classifier tests
+- [ ] Real OAuth/sync validation (requires Google Cloud project and test users)
+
+## M6 checklist
+
+- [x] PDF magic/size validation
+- [x] AES-256-GCM encrypted statement file store with opaque names
+- [x] Syncfusion local text extraction
+- [x] Declarative password strategies (name/birth date, customer ID/date, card suffix/date, user password)
+- [x] Generic statement parser for metadata and table-like rows
+- [x] Card matching, statement-row persistence, and total reconciliation
+- [x] Password-protected/unreadable/duplicate/mismatch/unmatched review paths
+- [x] Statement list/detail/import UI and encrypted PDF picker
+- [x] Parser/password/file-store/import tests
+- [ ] Verified bank statement adapters (requires anonymized fixtures)
+
+## M7 checklist
+
+- [x] Integer cashback calculator with percentage basis points, flat amounts, and monthly caps
+- [x] Ineligibility for credits/payments/refunds, zero/negative purchases, and currency mismatch
+- [x] Category/merchant eligibility and cap tracking
+- [x] Cashback rule repository and application service
+- [x] Reward accounts and point entries with labelled estimated value
+- [x] Active-point calculation excluding expired entries
+- [x] Rewards page for cashback, accounts, adjustments, and rules
+- [x] Home cashback and reward-point summaries
+- [x] Unit/repository/widget coverage
+
+## M8 checklist
+
+- [x] `.ccmbackup` v1 magic/version and allow-listed logical table export
+- [x] Argon2id key derivation and AES-256-GCM authenticated envelope
+- [x] Minimum 12-character backup password
+- [x] OAuth tokens, secure-storage keys, email accounts, and sync checkpoints excluded
+- [x] Statement PDFs decrypted into the backup and re-encrypted on restore
+- [x] Restore validation before table replacement and file cleanup on failure
+- [x] Stale token deletion after successful restore
+- [x] Full local wipe of database, statement files, keys, and tokens
+- [x] Settings backup/restore/wipe UI
+- [x] Backup/restore integration tests
+- [ ] Device-level backup file picking and wipe validation
+
+## M9 / M10 blockers
+
+| Blocker | Impact |
 |---|---|
-| `dart format --output=none --set-exit-if-changed .` | Pass (80 files, 0 changed) |
-| `flutter analyze` | No issues |
-| `flutter test` | 69/69 pass |
-| `flutter build apk --debug` | Success, 33.9 s warm |
-| APK | `build/app/outputs/flutter-apk/app-debug.apk`, 204 MB |
-| Package / version | `app.creditcardmanager`, `0.1.0+1` |
-| minSdk / targetSdk / compileSdk | 24 / 36 / 36 |
-| Schema | v2, with a populated v1-to-v2 upgrade test |
-| iOS build | Not run (Linux host; requires macOS) |
-| Device tests | Not run (no hardware device; no `/dev/kvm`) |
+| No macOS host | No iOS build, Keychain runtime, OAuth, backup, or TestFlight validation |
+| No physical Android device / no `/dev/kvm` | No Keystore, SMS permission, file picker, backup, or wipe runtime validation |
+| No Google Cloud project | Gmail OAuth and sync cannot be validated end to end |
+| No anonymized bank samples | SMS/PDF adapters cannot be labelled verified |
+| Owner-supplied signing/store accounts | Release APK/AAB and store distribution cannot be produced |
 
-The dashboard displays a reconciled outstanding balance that the user enters for each
-card. It does not add lifetime purchases to estimate a balance. Transaction- and
-statement-derived balances arrive in M3/M6; when they conflict with the reconciled value,
-both must be preserved for review rather than silently overwriting one.
+## Known limitations
 
-The wrong-key test still prints SQLCipher `hmac check failed` and `error decrypting page`
-lines to stderr. These are expected cipher diagnostics with no data content.
+- **No macOS host:** iOS code is generated and statically reviewed, but iOS build,
+  Keychain runtime, and TestFlight validation are blocked. No iOS support is claimed.
+- **No `/dev/kvm`:** emulator acceleration is unavailable; device-level testing requires a
+  physical device or another host.
+- **Android Keystore path unexercised at runtime:** host tests prove encryption and
+  database behavior; the APK proves SQLCipher linkage and channel presence.
+- **iOS backup exclusion incomplete:** the Keychain key is device-only, but the database
+  file is not yet marked `NSURLIsExcludedFromBackupKey`.
+- **Biometric app gate not implemented:** D-08 remains proposed.
+- **No background sync:** Gmail/SMS sync is user-triggered; no WorkManager/BGTask job.
+- **No real OAuth validation:** Gmail is wired but unproven against Google's servers.
+- **No verified bank fixtures:** the generic SMS/PDF parsers are conservative and create
+  review items rather than claiming bank-specific accuracy.
+- **`/tmp` is a 1.6 GB tmpfs:** all SDKs and caches are redirected to `$HOME`; commands
+  must source `~/development/env.sh`.
+- **No CI configured:** `tool/check.sh` is the local equivalent.
+- **Outstanding remains reconciled manually:** transaction/statement data is preserved
+  separately; conflicting balances are not silently overwritten.
 
 ## Environment record
 
@@ -157,34 +209,12 @@ lines to stderr. These are expected cipher diagnostics with no data content.
 | Toolchain script | `~/development/env.sh` |
 | Gradle cache | `~/.gradle` (kept off `/tmp`) |
 
-## Known limitations
+## Next work
 
-- **No macOS host:** iOS code is generated and statically reviewed, but iOS build,
-  Keychain runtime, and TestFlight validation are blocked. No iOS support is claimed.
-- **No `/dev/kvm`:** emulator acceleration is unavailable, so device-level testing
-  (SMS permissions, biometrics, keychain) requires a physical device or another host.
-  M1's Keystore path and the app's real database open are therefore unexercised at runtime.
-- **M1 validation gap:** encryption, schema, repositories, migrations, and the
-  background-isolate path are proven by host tests. The APK is proven to link SQLCipher
-  and contain the Keystore channel, but no Android Keystore round-trip has executed.
-- **iOS backup exclusion incomplete:** the Keychain key is device-only, but the database
-  file is not yet marked `NSURLIsExcludedFromBackupKey`. This is release-blocking for
-  M8/M9 rather than silently accepted.
-- **Biometric app gate not implemented:** D-08 remains proposed. M1 relies on device
-  unlock plus Keystore/Keychain protection.
-- **`/tmp` is a 1.6 GB tmpfs:** all SDKs and caches are redirected to `$HOME`;
-  commands must source `~/development/env.sh`.
-- **No CI configured:** the workspace has no CI runner. `tool/check.sh` is the local
-  equivalent and must be run before each milestone is signed off.
-- **No bank samples yet:** adapters cannot be labeled verified until anonymized SMS and
-  statement fixtures exist.
-- **Outstanding is reconciled manually in M2:** the value is persisted exactly and drives
-  available credit and utilisation, but it is not yet produced by transaction or statement
-  reconciliation. M3/M6 must preserve both values when they disagree.
-
-## Next milestone
-
-M2 is complete on this host and ready for review. M1 still lacks Android Keystore runtime
-validation and both milestones lack iOS build/runtime validation because the required
-hardware is unavailable. After explicit acceptance of those limits, M3 begins the canonical
-transaction engine, idempotent import, and review queue.
+1. Run the app on a physical Android device to validate Keystore, SMS permission/import,
+   file picker, backup/restore, and local wipe.
+2. Configure a Google Cloud OAuth client and validate Gmail connect/refresh/sync/revoke.
+3. Add anonymized bank SMS/PDF fixtures and promote adapters only when verified.
+4. On a macOS host, build iOS, mark data files excluded from backup, and validate Keychain,
+   OAuth, statement import, backup/restore, and TestFlight.
+5. Obtain owner signing identities/store accounts for release hardening.

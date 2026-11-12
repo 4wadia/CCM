@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router.dart';
 import '../../../../domain/entities/card_portfolio_summary.dart';
+import '../../../../domain/entities/credit_card.dart';
+import '../../../../shared/formatting/date_format.dart';
 import '../../../../shared/formatting/percent.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
@@ -12,54 +14,83 @@ import '../../../../shared/widgets/app_loading_state.dart';
 import '../../../../shared/widgets/app_progress_indicator.dart';
 import '../../../../shared/widgets/card_network_badge.dart';
 import '../../../../shared/widgets/currency_text.dart';
-import '../../../cards/presentation/providers/card_providers.dart';
+import '../../../transactions/presentation/widgets/transaction_tile.dart';
+import '../providers/home_providers.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final portfolio = ref.watch(cardPortfolioProvider);
+    final dashboard = ref.watch(homeDashboardProvider);
 
     return Scaffold(
       key: const Key('home-page'),
       appBar: AppBar(title: const Text('Home')),
-      body: portfolio.when(
+      body: dashboard.when(
         loading: () =>
             const AppLoadingState(message: 'Loading your card overview…'),
         error: (_, _) => AppErrorState(
-          message: 'Your card summary could not be loaded.',
-          onRetry: () => ref.invalidate(cardPortfolioProvider),
+          message: 'Your dashboard could not be loaded.',
+          onRetry: () => ref.invalidate(homeDashboardProvider),
         ),
-        data: (value) => value.isEmpty
+        data: (value) => value.portfolio.isEmpty
             ? _EmptyPortfolio(onAddCard: () => context.go(AppRoutes.cards))
-            : _Dashboard(portfolio: value),
+            : _Dashboard(dashboard: value),
       ),
     );
   }
 }
 
 class _Dashboard extends StatelessWidget {
-  const _Dashboard({required this.portfolio});
+  const _Dashboard({required this.dashboard});
 
-  final CardPortfolio portfolio;
+  final HomeDashboard dashboard;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final portfolio = dashboard.portfolio;
+    final analytics = dashboard.analytics;
+    final cardMap = <String, CreditCard>{
+      for (final summary in portfolio.cards) summary.card.id: summary.card,
+    };
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       children: [
-        Text('Credit limits', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text(
-          'Active cards, shown separately by currency',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        if (dashboard.reviewCount > 0) ...[
+          Card(
+            color: theme.colorScheme.errorContainer,
+            child: ListTile(
+              key: const Key('home-review-banner'),
+              leading: Icon(
+                Icons.rule,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+              title: Text(
+                '${dashboard.reviewCount} '
+                '${dashboard.reviewCount == 1 ? 'item needs' : 'items need'} '
+                'review',
+                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              ),
+              subtitle: Text(
+                'Ambiguous imports are waiting for a decision.',
+                style: TextStyle(
+                  color: theme.colorScheme.onErrorContainer,
+                  fontSize: 12,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go(AppRoutes.transactions),
+            ),
           ),
+          const SizedBox(height: 16),
+        ],
+        const _SectionTitle(
+          title: 'Credit limits',
+          subtitle: 'Active cards, shown separately by currency',
         ),
-        const SizedBox(height: 16),
         for (final summary in portfolio.byCurrency)
           _CurrencySummaryCard(summary: summary),
         if (!portfolio.hasComparableCurrencies) ...[
@@ -70,18 +101,265 @@ class _Dashboard extends StatelessWidget {
             style: theme.textTheme.bodySmall,
           ),
         ],
-        const SizedBox(height: 20),
-        Text('Cards', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: 18),
+        const _SectionTitle(
+          title: 'This month',
+          subtitle: 'Spending by currency, never combined across currencies.',
+        ),
+        AppCard(
+          child: analytics.currentMonth.isEmpty
+              ? const Text('No spending recorded this month.')
+              : Column(
+                  children: [
+                    for (final spending in analytics.currentMonth)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${spending.currencyCode} · '
+                                '${spending.transactionCount} '
+                                '${spending.transactionCount == 1 ? 'transaction' : 'transactions'}',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                            CurrencyText(
+                              amountMinor: spending.amountMinor,
+                              currencyCode: spending.currencyCode,
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+        if (analytics.upcomingPayments.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          _SectionTitle(
+            title: 'Upcoming payments',
+            action: TextButton(
+              onPressed: () => context.go(AppRoutes.cards),
+              child: const Text('Cards'),
+            ),
+          ),
+          for (final payment in analytics.upcomingPayments.take(3))
+            AppCard(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              onTap: () => context.go(AppRoutes.cards),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 18,
+                    child: Icon(Icons.event_outlined, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${payment.displayName} •••• ${payment.lastFour}',
+                          style: theme.textTheme.titleSmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Due ${formatShortDate(payment.dueDate)}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  CurrencyText(
+                    amountMinor: payment.amountMinor,
+                    currencyCode: payment.currencyCode,
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ],
+              ),
+            ),
+        ],
+        const SizedBox(height: 18),
+        _SectionTitle(
+          title: 'Recent transactions',
+          action: TextButton(
+            onPressed: () => context.go(AppRoutes.transactions),
+            child: const Text('View all'),
+          ),
+        ),
+        if (dashboard.recentTransactions.isEmpty)
+          const AppCard(child: Text('No transactions yet.'))
+        else
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (final tx in dashboard.recentTransactions.take(5))
+                  TransactionTile(
+                    transaction: tx,
+                    card: tx.cardId == null ? null : cardMap[tx.cardId],
+                    onTap: () => context.go(AppRoutes.transactions),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 18),
+        _SectionTitle(
+          title: 'Cashback',
+          action: TextButton(
+            onPressed: () => context.go(AppRoutes.rewards),
+            child: const Text('Rewards'),
+          ),
+        ),
+        AppCard(
+          child: dashboard.cashbackByCurrency.isEmpty
+              ? const Text('No cashback recorded yet.')
+              : Wrap(
+                  spacing: 24,
+                  runSpacing: 12,
+                  children: [
+                    for (final entry in dashboard.cashbackByCurrency.entries)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.key, style: theme.textTheme.labelSmall),
+                          CurrencyText(
+                            amountMinor: entry.value,
+                            currencyCode: entry.key,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+        ),
+        if (dashboard.rewardAccounts.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          _SectionTitle(
+            title: 'Reward points',
+            action: TextButton(
+              onPressed: () => context.go(AppRoutes.rewards),
+              child: const Text('Manage'),
+            ),
+          ),
+          AppCard(
+            child: Column(
+              children: [
+                for (final account in dashboard.rewardAccounts)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            account.programmeName,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                        Text(
+                          '${account.currentPoints} pts',
+                          style: theme.textTheme.labelLarge,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        const _SectionTitle(title: 'Gmail statements'),
+        AppCard(
+          child: Row(
+            children: [
+              Icon(
+                dashboard.emailAccount == null
+                    ? Icons.link_off
+                    : Icons.mark_email_read_outlined,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dashboard.emailAccount == null
+                          ? 'Not connected'
+                          : dashboard.emailAccount!.emailAddress,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    Text(
+                      dashboard.emailAccount == null
+                          ? 'Connect in Settings to fetch statement emails.'
+                          : 'Last sync '
+                                '${formatDateTime(dashboard.emailAccount!.lastSuccessfulSync)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.settings),
+                child: Text(
+                  dashboard.emailAccount == null ? 'Connect' : 'Settings',
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        _SectionTitle(
+          title: 'Cards',
+          action: TextButton(
+            onPressed: () => context.go(AppRoutes.cards),
+            child: const Text('Manage'),
+          ),
+        ),
         for (final summary in portfolio.cards)
           _CardSummaryCard(summary: summary),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           'Outstanding is the reconciled balance you entered for each card. '
-          'Transaction-derived balances arrive in a later milestone.',
+          'It is not derived from lifetime purchases.',
           style: theme.textTheme.bodySmall,
         ),
       ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, this.subtitle, this.action});
+
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle!, style: theme.textTheme.bodySmall),
+                ],
+              ],
+            ),
+          ),
+          ?action,
+        ],
+      ),
     );
   }
 }

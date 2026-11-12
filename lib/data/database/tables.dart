@@ -79,6 +79,13 @@ class Transactions extends Table {
   TextColumn get status => text()();
   TextColumn get sourceConfidence => text().nullable()();
   TextColumn get notes => text().nullable()();
+
+  /// SHA-256 fingerprint of normalized import fields. Added in schema v3.
+  TextColumn get fingerprint => text().nullable()();
+
+  /// Version of the fingerprint recipe. Bump when normalization changes.
+  IntColumn get fingerprintVersion => integer().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -97,6 +104,7 @@ class TransactionSources extends Table {
       text().nullable().references(Transactions, #id)();
   TextColumn get sourceType => text()();
   TextColumn get sourceReference => text().nullable()();
+  DateTimeColumn get sourceDate => dateTime().nullable()();
   TextColumn get originalDescription => text()();
   TextColumn get importJobId => text().nullable().references(ImportJobs, #id)();
   TextColumn get parserId => text().nullable()();
@@ -139,6 +147,199 @@ class AppSettings extends Table {
   TextColumn get settingKey => text()();
   TextColumn get encryptedValue => text().nullable()();
   TextColumn get plainValue => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Ambiguous or incomplete imported records. Nothing is silently discarded.
+@DataClassName('ReviewItemRow')
+class ReviewItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text().nullable()();
+  TextColumn get sourceType => text().nullable()();
+  TextColumn get sourceReference => text().nullable()();
+  TextColumn get reasonCode => text()();
+  TextColumn get userMessage => text()();
+  TextColumn get details => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Statement metadata and the opaque path of its encrypted PDF.
+@DataClassName('StatementRow')
+class Statements extends Table {
+  TextColumn get id => text()();
+  TextColumn get cardId => text().nullable().references(CreditCards, #id)();
+  TextColumn get bankId => text().nullable().references(Banks, #id)();
+  DateTimeColumn get statementPeriodStart => dateTime()();
+  DateTimeColumn get statementPeriodEnd => dateTime()();
+  DateTimeColumn get statementDate => dateTime()();
+  DateTimeColumn get paymentDueDate => dateTime().nullable()();
+  IntColumn get previousBalanceMinor =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get totalDueMinor => integer().withDefault(const Constant(0))();
+  IntColumn get minimumDueMinor => integer().withDefault(const Constant(0))();
+  TextColumn get currencyCode => text()();
+  TextColumn get encryptedFilePath => text()();
+  TextColumn get fileHash => text()();
+  IntColumn get fileSizeBytes => integer().withDefault(const Constant(0))();
+  TextColumn get processingStatus => text()();
+  TextColumn get parserId => text().nullable()();
+  TextColumn get parserVersion => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Rows extracted from a statement before or after reconciliation.
+@DataClassName('StatementTransactionRow')
+class StatementTransactions extends Table {
+  TextColumn get id => text()();
+  TextColumn get statementId => text().references(Statements, #id)();
+  TextColumn get transactionId =>
+      text().nullable().references(Transactions, #id)();
+  TextColumn get description => text()();
+  TextColumn get merchantNormalized => text().nullable()();
+  IntColumn get amountMinor => integer()();
+  TextColumn get currencyCode => text()();
+  DateTimeColumn get transactionDate => dateTime()();
+  DateTimeColumn get postingDate => dateTime().nullable()();
+  TextColumn get transactionType => text()();
+  TextColumn get matchStatus => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Cashback ledger entries. Monetary values remain integer minor units.
+@DataClassName('CashbackEntryRow')
+class CashbackEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get cardId => text().references(CreditCards, #id)();
+  TextColumn get transactionId =>
+      text().nullable().references(Transactions, #id)();
+  IntColumn get amountMinor => integer()();
+  TextColumn get currencyCode => text()();
+  TextColumn get status => text()();
+  DateTimeColumn get earnedAt => dateTime()();
+  DateTimeColumn get creditedAt => dateTime().nullable()();
+  DateTimeColumn get reversedAt => dateTime().nullable()();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// One reward programme account per card programme.
+@DataClassName('RewardAccountRow')
+class RewardAccounts extends Table {
+  TextColumn get id => text()();
+  TextColumn get cardId => text().references(CreditCards, #id)();
+  TextColumn get programmeName => text()();
+  IntColumn get currentPoints => integer().withDefault(const Constant(0))();
+  IntColumn get estimatedValueMinor => integer().nullable()();
+  TextColumn get currencyCode => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Reward points earned, redeemed, expired, or manually adjusted.
+@DataClassName('RewardEntryRow')
+class RewardEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get rewardAccountId => text().references(RewardAccounts, #id)();
+  TextColumn get transactionId =>
+      text().nullable().references(Transactions, #id)();
+  IntColumn get points => integer()();
+  TextColumn get entryType => text()();
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Declarative, versioned bank rules. Never contains executable code.
+@DataClassName('BankRuleRow')
+class BankRules extends Table {
+  TextColumn get id => text()();
+  TextColumn get bankId => text().references(Banks, #id)();
+  TextColumn get ruleType => text()();
+  TextColumn get configurationVersion => text()();
+  TextColumn get configuration => text()();
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Connected email account metadata. Tokens live only in secure storage; this
+/// table stores an opaque reference, never a refresh or access token.
+@DataClassName('EmailAccountRow')
+class EmailAccounts extends Table {
+  TextColumn get id => text()();
+  TextColumn get provider => text()();
+  TextColumn get emailAddress => text()();
+  TextColumn get secureTokenReference => text()();
+  TextColumn get status => text().withDefault(const Constant('connected'))();
+  BoolColumn get syncEnabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get connectedAt => dateTime()();
+  DateTimeColumn get lastSuccessfulSync => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Resumable sync checkpoints, one row per email account.
+@DataClassName('SyncCheckpointRow')
+class SyncCheckpoints extends Table {
+  TextColumn get id => text()();
+  TextColumn get emailAccountId => text().references(EmailAccounts, #id)();
+  TextColumn get providerCheckpoint => text().nullable()();
+  DateTimeColumn get lastSyncStarted => dateTime().nullable()();
+  DateTimeColumn get lastSyncCompleted => dateTime().nullable()();
+  TextColumn get status => text()();
+  TextColumn get errorCode => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Declarative cashback policy. Percentages are basis points and caps are in
+/// integer minor units; no floating point is used.
+@DataClassName('CashbackRuleRow')
+class CashbackRules extends Table {
+  TextColumn get id => text()();
+  TextColumn get cardId => text().references(CreditCards, #id)();
+  TextColumn get kind => text()();
+  IntColumn get rateBasisPoints => integer().nullable()();
+  IntColumn get flatAmountMinor => integer().nullable()();
+  TextColumn get categoryId => text().nullable().references(Categories, #id)();
+  TextColumn get merchantContains => text().nullable()();
+  IntColumn get monthlyCapMinor => integer().nullable()();
+  TextColumn get currencyCode => text()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override

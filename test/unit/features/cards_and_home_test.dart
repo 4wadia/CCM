@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../fakes/fake_repositories.dart';
+import '../../fakes/test_overrides.dart';
 
 void main() {
   final now = DateTime.utc(2026, 11, 5);
@@ -47,8 +48,8 @@ void main() {
   );
 
   Widget home(List<CreditCard> cards) {
-    return ProviderScope(
-      overrides: [creditCardsProvider.overrideWith((ref) async => cards)],
+    return testProviderScope(
+      cards: cards,
       child: MaterialApp(theme: AppTheme.light(), home: const HomePage()),
     );
   }
@@ -145,6 +146,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Utilisation unavailable (zero limit)'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('card-summary-zero')),
+      300,
+    );
     expect(find.text('—'), findsOneWidget);
   });
 

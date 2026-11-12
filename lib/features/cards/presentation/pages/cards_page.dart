@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/providers.dart';
+import '../../../../app/router.dart';
 import '../../../../domain/entities/bank.dart';
 import '../../../../domain/entities/card_portfolio_summary.dart';
 import '../../../../domain/entities/credit_card.dart';
+import '../../../../domain/entities/transaction.dart';
+import '../../../../shared/formatting/date_format.dart';
 import '../../../../shared/formatting/percent.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_loading_state.dart';
 import '../../../../shared/widgets/card_network_badge.dart';
 import '../../../../shared/widgets/currency_text.dart';
+import '../../../rewards/presentation/providers/reward_providers.dart';
+import '../../../transactions/presentation/providers/transaction_providers.dart';
+import '../../../transactions/presentation/widgets/transaction_tile.dart';
 import '../providers/card_providers.dart';
 import '../widgets/card_editor_sheet.dart';
 
@@ -50,18 +58,41 @@ class CardsPage extends ConsumerWidget {
             message: 'Issuers could not be loaded.',
             onRetry: () => ref.invalidate(knownBanksProvider),
           ),
-          data: (knownBanks) => _CardList(
-            cards: items,
-            banks: {for (final bank in knownBanks) bank.id: bank},
-            onAdd: () => _editCard(context, ref),
-            onEdit: (card) => _editCard(context, ref, card: card),
-            onArchive: (card) => _confirmArchive(context, ref, card),
-            onRestore: (card) =>
-                _setStatus(context, ref, card, CardStatus.active),
-            onClose: (card) => _confirmClose(context, ref, card),
-          ),
+          data: (knownBanks) {
+            final bankMap = {for (final bank in knownBanks) bank.id: bank};
+            return _CardList(
+              cards: items,
+              banks: bankMap,
+              onAdd: () => _editCard(context, ref),
+              onOpen: (card) => _openCard(
+                context,
+                ref,
+                card,
+                bankMap[card.bankId]?.displayName ?? 'Issuer',
+              ),
+              onEdit: (card) => _editCard(context, ref, card: card),
+              onArchive: (card) => _confirmArchive(context, ref, card),
+              onRestore: (card) =>
+                  _setStatus(context, ref, card, CardStatus.active),
+              onClose: (card) => _confirmClose(context, ref, card),
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Future<void> _openCard(
+    BuildContext context,
+    WidgetRef ref,
+    CreditCard card,
+    String bankName,
+  ) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _CardDetailSheet(card: card, bankName: bankName),
     );
   }
 
@@ -175,6 +206,7 @@ class _CardList extends StatelessWidget {
     required this.cards,
     required this.banks,
     required this.onAdd,
+    required this.onOpen,
     required this.onEdit,
     required this.onArchive,
     required this.onRestore,
@@ -184,6 +216,7 @@ class _CardList extends StatelessWidget {
   final List<CreditCard> cards;
   final Map<String, Bank> banks;
   final VoidCallback onAdd;
+  final ValueChanged<CreditCard> onOpen;
   final ValueChanged<CreditCard> onEdit;
   final ValueChanged<CreditCard> onArchive;
   final ValueChanged<CreditCard> onRestore;
@@ -214,6 +247,7 @@ class _CardList extends StatelessWidget {
             _CardTile(
               card: card,
               bankName: banks[card.bankId]?.displayName ?? 'Issuer',
+              onOpen: () => onOpen(card),
               onEdit: () => onEdit(card),
               onArchive: () => onArchive(card),
               onClose: () => onClose(card),
@@ -225,6 +259,7 @@ class _CardList extends StatelessWidget {
             _CardTile(
               card: card,
               bankName: banks[card.bankId]?.displayName ?? 'Issuer',
+              onOpen: () => onOpen(card),
               onRestore: card.status == CardStatus.archived
                   ? () => onRestore(card)
                   : null,
@@ -260,6 +295,7 @@ class _CardTile extends StatelessWidget {
   const _CardTile({
     required this.card,
     required this.bankName,
+    this.onOpen,
     this.onEdit,
     this.onArchive,
     this.onRestore,
@@ -268,6 +304,7 @@ class _CardTile extends StatelessWidget {
 
   final CreditCard card;
   final String bankName;
+  final VoidCallback? onOpen;
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
   final VoidCallback? onRestore;
@@ -299,91 +336,95 @@ class _CardTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 5),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CardNetworkBadge(network: card.network),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        card.displayName,
-                        style: theme.textTheme.titleMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$bankName  •••• ${card.lastFour}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _statusLabel(card.status),
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CardNetworkBadge(network: card.network),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          card.displayName,
+                          style: theme.textTheme.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$bankName  •••• ${card.lastFour}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _statusLabel(card.status),
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (actions.isNotEmpty)
-                  PopupMenuButton<String>(
-                    tooltip: 'Card actions',
-                    onSelected: (action) {
-                      switch (action) {
-                        case 'edit':
-                          onEdit?.call();
-                        case 'archive':
-                          onArchive?.call();
-                        case 'restore':
-                          onRestore?.call();
-                        case 'close':
-                          onClose?.call();
-                      }
-                    },
-                    itemBuilder: (context) => actions,
+                  if (actions.isNotEmpty)
+                    PopupMenuButton<String>(
+                      tooltip: 'Card actions',
+                      onSelected: (action) {
+                        switch (action) {
+                          case 'edit':
+                            onEdit?.call();
+                          case 'archive':
+                            onArchive?.call();
+                          case 'restore':
+                            onRestore?.call();
+                          case 'close':
+                            onClose?.call();
+                        }
+                      },
+                      itemBuilder: (context) => actions,
+                    ),
+                ],
+              ),
+              const Divider(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Metric(
+                      label: 'Limit',
+                      amountMinor: summary.creditLimitMinor,
+                      currencyCode: card.currencyCode,
+                    ),
                   ),
-              ],
-            ),
-            const Divider(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _Metric(
-                    label: 'Limit',
-                    amountMinor: summary.creditLimitMinor,
-                    currencyCode: card.currencyCode,
+                  Expanded(
+                    child: _Metric(
+                      label: 'Outstanding',
+                      amountMinor: summary.outstandingMinor,
+                      currencyCode: card.currencyCode,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _Metric(
-                    label: 'Outstanding',
-                    amountMinor: summary.outstandingMinor,
-                    currencyCode: card.currencyCode,
+                  Expanded(
+                    child: _Metric(
+                      label: 'Available',
+                      amountMinor: summary.availableCreditMinor,
+                      currencyCode: card.currencyCode,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _Metric(
-                    label: 'Available',
-                    amountMinor: summary.availableCreditMinor,
-                    currencyCode: card.currencyCode,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              summary.utilisationPercent == null
-                  ? 'Utilisation unavailable (zero limit)'
-                  : 'Utilisation ${formatPercent(summary.utilisationPercent!)}',
-              style: theme.textTheme.labelSmall,
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                summary.utilisationPercent == null
+                    ? 'Utilisation unavailable (zero limit)'
+                    : 'Utilisation ${formatPercent(summary.utilisationPercent!)}',
+                style: theme.textTheme.labelSmall,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -395,6 +436,195 @@ class _CardTile extends StatelessWidget {
       CardStatus.archived => 'Archived',
       CardStatus.closed => 'Closed',
     };
+  }
+}
+
+class _CardDetailSheet extends ConsumerWidget {
+  const _CardDetailSheet({required this.card, required this.bankName});
+
+  final CreditCard card;
+  final String bankName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final summary = CardSummary(card);
+    final recent = ref.watch(cardRecentTransactionsProvider(card.id));
+    final reward = ref.watch(rewardAccountForCardProvider(card.id));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Row(
+            children: [
+              CardNetworkBadge(network: card.network),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      card.displayName,
+                      style: theme.textTheme.titleLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '$bankName  •••• ${card.lastFour}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(
+              children: [
+                _Metric(
+                  label: 'Limit',
+                  amountMinor: summary.creditLimitMinor,
+                  currencyCode: card.currencyCode,
+                ),
+                const SizedBox(height: 8),
+                _Metric(
+                  label: 'Outstanding',
+                  amountMinor: summary.outstandingMinor,
+                  currencyCode: card.currencyCode,
+                ),
+                const SizedBox(height: 8),
+                _Metric(
+                  label: 'Available',
+                  amountMinor: summary.availableCreditMinor,
+                  currencyCode: card.currencyCode,
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    summary.utilisationPercent == null
+                        ? 'Utilisation unavailable (zero limit)'
+                        : 'Utilisation ${formatPercent(summary.utilisationPercent!)}',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  ref
+                      .read(transactionFilterProvider.notifier)
+                      .set(TransactionFilter(cardId: card.id));
+                  Navigator.pop(context);
+                  context.go(AppRoutes.transactions);
+                },
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Transactions'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push(AppRoutes.statements);
+                },
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('Statements'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go(AppRoutes.rewards);
+                },
+                icon: const Icon(Icons.stars_outlined),
+                label: const Text('Rewards'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('Recent transactions', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          recent.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (_, _) => const Text('Recent transactions are unavailable.'),
+            data: (items) => items.isEmpty
+                ? const Text('No transactions for this card yet.')
+                : AppCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (final tx in items)
+                          TransactionTile(
+                            transaction: tx,
+                            card: card,
+                            onTap: () {
+                              ref
+                                  .read(transactionFilterProvider.notifier)
+                                  .set(TransactionFilter(cardId: card.id));
+                              Navigator.pop(context);
+                              context.go(AppRoutes.transactions);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          reward.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (account) => account == null
+                ? const SizedBox.shrink()
+                : AppCard(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars_outlined),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${account.programmeName}: '
+                            '${account.currentPoints} points',
+                          ),
+                        ),
+                        if (account.estimatedValueMinor != null &&
+                            account.currencyCode != null)
+                          CurrencyText(
+                            amountMinor: account.estimatedValueMinor!,
+                            currencyCode: account.currencyCode!,
+                            style: theme.textTheme.labelMedium,
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Statement day: ${card.statementDay ?? '—'} · '
+            'Due day: ${card.dueDay ?? '—'}',
+            style: theme.textTheme.bodySmall,
+          ),
+          if (card.rewardProgramme != null)
+            Text(
+              'Reward programme: ${card.rewardProgramme}',
+              style: theme.textTheme.bodySmall,
+            ),
+          Text(
+            'Updated ${formatShortDate(card.updatedAt)}',
+            style: theme.textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
   }
 }
 
