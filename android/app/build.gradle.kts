@@ -28,11 +28,10 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // flutter_appauth registers its redirect receiver with this scheme.
-        // Gmail Android OAuth clients use the reversed client id, for example
-        // com.googleusercontent.apps.<client-id>. Override it with the
-        // GMAIL_REDIRECT_SCHEME environment variable or the
-        // -PappAuthRedirectScheme Gradle property.
+        // flutter_appauth still contributes an Android redirect receiver even
+        // though Gmail on Android now uses Google Play services authorization.
+        // Keep a valid placeholder so the merged manifest builds. Override it
+        // with GMAIL_REDIRECT_SCHEME or -PappAuthRedirectScheme if needed.
         val configuredAppAuthRedirectScheme =
             System.getenv("GMAIL_REDIRECT_SCHEME")
                 ?: (project.findProperty("appAuthRedirectScheme") as String?)
