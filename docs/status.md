@@ -25,7 +25,7 @@ remain the source of truth.
 |---|---|
 | `dart format` | Clean |
 | `flutter analyze` | No issues |
-| `flutter test` | 175/175 pass |
+| `flutter test` | 176/176 pass |
 | `flutter build apk --debug` | Success |
 | APK | `build/app/outputs/flutter-apk/app-debug.apk`, 213 MB debug build |
 | Schema | v3, with v1/v2 forward migrations |

@@ -226,6 +226,17 @@ class TransactionRepositoryImpl implements TransactionRepository {
           .whereType<String>()
           .toSet()
           .toList(growable: false);
+      // A source linked to an existing transaction must not make that
+      // transaction look disposable. Only rows that created a transaction may
+      // cause it to be deleted when the last source is removed.
+      final createdTransactionIds = sourceRows
+          .where(
+            (row) =>
+                row.transactionId != null &&
+                row.matchStatus != SourceMatchStatus.linkedExisting.name,
+          )
+          .map((row) => row.transactionId!)
+          .toSet();
       await (_db.delete(
         _db.transactionSources,
       )..where((table) => table.id.isIn(sourceIds))).go();
@@ -244,7 +255,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
             .whereType<String>()
             .toSet();
         final orphanIds = transactionIds
-            .where((id) => !stillReferenced.contains(id))
+            .where(
+              (id) =>
+                  !stillReferenced.contains(id) &&
+                  createdTransactionIds.contains(id),
+            )
             .toList(growable: false);
         if (orphanIds.isNotEmpty) {
           await (_db.update(

@@ -102,6 +102,7 @@ void main() {
     String? transactionId = 'tx_1',
     String reference = 'sms:1',
     TransactionSourceType type = TransactionSourceType.sms,
+    SourceMatchStatus matchStatus = SourceMatchStatus.created,
   }) {
     return TransactionSource(
       id: id,
@@ -110,7 +111,7 @@ void main() {
       sourceReference: reference,
       sourceDate: now,
       originalDescription: 'Coffee House',
-      matchStatus: SourceMatchStatus.created,
+      matchStatus: matchStatus,
       createdAt: now,
     );
   }
@@ -374,6 +375,26 @@ void main() {
         expect(await transactions.getById('tx_2'), isNull);
         final remaining = await transactions.sourcesFor('tx_1');
         expect(remaining.single.sourceType, TransactionSourceType.pdfStatement);
+      },
+    );
+
+    test(
+      'keeps a manual transaction that only had a linked SMS source',
+      () async {
+        await transactions.insert(transaction());
+        await transactions.linkSource(
+          source(matchStatus: SourceMatchStatus.linkedExisting),
+        );
+
+        final result = await transactions.clearImportedSource(
+          TransactionSourceType.sms,
+        );
+
+        expect(result.deletedSources, 1);
+        expect(result.deletedTransactions, 0);
+        expect(result.retainedTransactions, 1);
+        expect(await transactions.getById('tx_1'), isNotNull);
+        expect(await transactions.sourcesFor('tx_1'), isEmpty);
       },
     );
   });
