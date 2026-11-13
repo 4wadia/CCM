@@ -58,3 +58,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Android Gmail authorization uses Google Play services AuthorizationClient.
+    // Google no longer accepts custom URI redirect schemes on Android.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+}

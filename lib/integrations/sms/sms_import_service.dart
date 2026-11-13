@@ -4,12 +4,15 @@ import '../../domain/entities/bank.dart';
 import '../../domain/entities/import_job.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/bank_repository.dart';
+import '../../domain/repositories/credit_card_repository.dart';
 import '../../domain/repositories/import_job_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
+import '../../domain/repositories/transaction_repository.dart';
 import '../../domain/services/ids.dart';
 import '../../domain/services/import_service.dart';
 import 'sms_parser.dart';
 import 'sms_platform.dart';
+import 'sms_relevance.dart';
 
 class SmsImportResult {
   const SmsImportResult({
@@ -17,12 +20,34 @@ class SmsImportResult {
     required this.skipped,
     required this.requiresReview,
     required this.messagesRead,
+    required this.creditCardAlerts,
+    required this.ignored,
   });
 
   final int imported;
   final int skipped;
   final int requiresReview;
   final int messagesRead;
+
+  /// Messages that looked like credit-card alerts and were parsed.
+  final int creditCardAlerts;
+
+  /// Messages deliberately skipped because they were not credit-card alerts.
+  final int ignored;
+}
+
+class SmsClearResult {
+  const SmsClearResult({
+    required this.deletedTransactions,
+    required this.deletedSources,
+    required this.deletedReviews,
+    required this.deletedJobs,
+  });
+
+  final int deletedTransactions;
+  final int deletedSources;
+  final int deletedReviews;
+  final int deletedJobs;
 }
 
 class SmsImportService {
@@ -32,12 +57,18 @@ class SmsImportService {
     required SettingsRepository settings,
     required ReviewRepository reviews,
     required BankRepository banks,
+    required CreditCardRepository cards,
+    required TransactionRepository transactions,
+    required ImportJobRepository jobs,
     SmsParser parser = const GenericSmsParser(),
   }) : _platform = platform,
        _importer = importer,
        _settings = settings,
        _reviews = reviews,
        _banks = banks,
+       _cards = cards,
+       _transactions = transactions,
+       _jobs = jobs,
        _parser = parser;
 
   final SmsPlatform _platform;
@@ -45,6 +76,9 @@ class SmsImportService {
   final SettingsRepository _settings;
   final ReviewRepository _reviews;
   final BankRepository _banks;
+  final CreditCardRepository _cards;
+  final TransactionRepository _transactions;
+  final ImportJobRepository _jobs;
   final SmsParser _parser;
 
   static const String checkpointKey = 'sms.last_import_at';
@@ -82,34 +116,65 @@ class SmsImportService {
       limit: limit,
     );
     final banks = await _banks.getAll();
+    final cards = await _cards.getAll(includeArchived: false);
+    final knownLastFour = cards.map((card) => card.lastFour).toSet();
     final parsed = <ParsedTransaction>[];
     var lastDate = checkpoint;
+    var creditCardAlerts = 0;
+    var ignored = 0;
+    var unparsedReview = 0;
 
     for (final message in messages) {
       if (lastDate == null || message.receivedAt.isAfter(lastDate)) {
         lastDate = message.receivedAt;
       }
-      final bankHint = _bankHint(message.sender, banks);
-      final results = _parser.parse(message, bankHint: bankHint);
-      if (results.isEmpty && _looksTransactional(message.body)) {
-        await _reviews.add(
-          ReviewItem(
-            id: Ids.next('review'),
-            entityType: 'sms',
-            reasonCode: 'sms_unparsed',
-            userMessage:
-                'An SMS looked like a transaction alert but could not be read '
-                'confidently. Review it rather than losing it.',
-            sourceType: TransactionSourceType.sms.name,
-            sourceReference: 'sms:${message.id}',
-            details:
-                '{"sender":"${_escape(message.sender)}","receivedAt":"${message.receivedAt.toIso8601String()}"}',
-            status: ReviewStatus.open,
-            createdAt: DateTime.now().toUtc(),
-          ),
-        );
+      final relevance = SmsRelevanceClassifier.classify(message.body);
+      if (relevance == SmsRelevance.notCreditCard) {
+        ignored++;
         continue;
       }
+
+      final bankHint = _bankHint(message.sender, banks);
+      final results = _parser.parse(message, bankHint: bankHint);
+      if (results.isEmpty) {
+        if (relevance == SmsRelevance.creditCard &&
+            _looksTransactional(message.body)) {
+          await _reviews.add(
+            ReviewItem(
+              id: Ids.next('review'),
+              entityType: 'sms',
+              reasonCode: 'sms_unparsed',
+              userMessage:
+                  'A credit-card SMS looked like a transaction alert but could '
+                  'not be read confidently. Review it rather than losing it.',
+              sourceType: TransactionSourceType.sms.name,
+              sourceReference: 'sms:${message.id}',
+              details:
+                  '{"sender":"${_escape(message.sender)}","receivedAt":"${message.receivedAt.toIso8601String()}"}',
+              status: ReviewStatus.open,
+              createdAt: DateTime.now().toUtc(),
+            ),
+          );
+          unparsedReview++;
+        } else {
+          ignored++;
+        }
+        continue;
+      }
+
+      if (relevance == SmsRelevance.ambiguous) {
+        final matchesKnownCard = results.any(
+          (record) =>
+              record.cardLastFour != null &&
+              knownLastFour.contains(record.cardLastFour),
+        );
+        if (!matchesKnownCard) {
+          ignored++;
+          continue;
+        }
+      }
+
+      creditCardAlerts++;
       parsed.addAll(results);
     }
 
@@ -129,8 +194,31 @@ class SmsImportService {
     return SmsImportResult(
       imported: result.imported,
       skipped: result.skipped,
-      requiresReview: result.requiresReview,
+      requiresReview: result.requiresReview + unparsedReview,
       messagesRead: messages.length,
+      creditCardAlerts: creditCardAlerts,
+      ignored: ignored,
+    );
+  }
+
+  /// Removes SMS-imported transactions and SMS review/import history from this
+  /// app. It never deletes messages from the phone's inbox.
+  Future<SmsClearResult> clearImported() async {
+    final cleanup = await _transactions.clearImportedSource(
+      TransactionSourceType.sms,
+    );
+    final deletedReviews = await _reviews.deleteBySourceType(
+      TransactionSourceType.sms.name,
+    );
+    final deletedJobs = await _jobs.deleteBySourceType(
+      TransactionSourceType.sms.name,
+    );
+    await _settings.remove(checkpointKey);
+    return SmsClearResult(
+      deletedTransactions: cleanup.deletedTransactions,
+      deletedSources: cleanup.deletedSources,
+      deletedReviews: deletedReviews,
+      deletedJobs: deletedJobs,
     );
   }
 

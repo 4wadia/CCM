@@ -32,7 +32,7 @@ class FlutterSecureTokenStore implements SecureTokenStore {
       final access = json['access'] as String?;
       final refresh = json['refresh'] as String?;
       final expires = json['expires'] as String?;
-      if (access == null || refresh == null || expires == null) return null;
+      if (access == null || expires == null) return null;
       return OAuthTokens(
         accessToken: access,
         refreshToken: refresh,

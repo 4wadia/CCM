@@ -81,11 +81,14 @@ available for runtime permission/keystore tests.
 
 ### Gmail OAuth and tokens
 
-- Authorization Code + PKCE through `flutter_appauth`; no client secret.
-- Public client configuration is supplied at build time with `GMAIL_CLIENT_ID` and
-  optionally `GMAIL_REDIRECT_URI`.
-- Access/refresh tokens are stored only in `flutter_secure_storage` (Android
-  Keystore-backed or iOS Keychain), under an opaque reference.
+- Android uses Google Play services `AuthorizationClient`; no client ID, client secret, or
+  refresh token is embedded in the APK. The Android OAuth client is identified by the
+  package name and signing certificate registered in Google Cloud.
+- iOS uses Authorization Code + PKCE through `flutter_appauth`; the public client
+  configuration is supplied at build time with `GMAIL_CLIENT_ID` and optionally
+  `GMAIL_REDIRECT_URI`.
+- Access tokens are stored only in `flutter_secure_storage` (Android Keystore-backed or
+  iOS Keychain), under an opaque reference. iOS may also store a refresh token there.
 - The database stores only `email_accounts.secure_token_reference`.
 - Disconnect attempts remote revocation, then always deletes local tokens and marks the
   account disconnected.

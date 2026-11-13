@@ -13,7 +13,9 @@ abstract interface class OAuthService {
 
   Future<OAuthTokens> connect({String? loginHint});
 
-  Future<OAuthTokens> refresh(String refreshToken);
+  /// Renews access. [refreshToken] is null for platform flows that keep token
+  /// renewal in the operating system or Google Play services.
+  Future<OAuthTokens> refresh(String? refreshToken);
 
   Future<void> revoke(String token);
 }
@@ -71,8 +73,14 @@ class GoogleOAuthService implements OAuthService {
   }
 
   @override
-  Future<OAuthTokens> refresh(String refreshToken) async {
+  Future<OAuthTokens> refresh(String? refreshToken) async {
     _requireConfigured();
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw const AppFailure(
+        code: 'CCM-GMAIL-006',
+        message: 'Gmail access expired. Reconnect the account.',
+      );
+    }
     try {
       final response = await _appAuth.token(
         TokenRequest(

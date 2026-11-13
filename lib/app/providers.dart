@@ -29,6 +29,7 @@ import '../domain/services/cashback_application_service.dart';
 import '../domain/services/import_service.dart';
 import '../integrations/backup/backup_service.dart';
 import '../integrations/backup/local_data_service.dart';
+import '../integrations/gmail/android_google_auth_service.dart';
 import '../integrations/gmail/gmail_client.dart';
 import '../integrations/gmail/gmail_config.dart';
 import '../integrations/gmail/gmail_sync_service.dart';
@@ -174,6 +175,9 @@ final smsImportServiceProvider = FutureProvider<SmsImportService>((ref) async {
     settings: await ref.watch(settingsRepositoryProvider.future),
     reviews: await ref.watch(reviewRepositoryProvider.future),
     banks: await ref.watch(bankRepositoryProvider.future),
+    cards: await ref.watch(creditCardRepositoryProvider.future),
+    transactions: await ref.watch(transactionRepositoryProvider.future),
+    jobs: await ref.watch(importJobRepositoryProvider.future),
   );
 });
 
@@ -215,6 +219,9 @@ final secureTokenStoreProvider = Provider<SecureTokenStore>(
 );
 
 final oauthServiceProvider = Provider<OAuthService>((ref) {
+  if (Platform.isAndroid) {
+    return AndroidGoogleAuthService();
+  }
   return GoogleOAuthService(config: ref.watch(gmailConfigProvider));
 });
 
@@ -222,7 +229,6 @@ final gmailClientProvider = Provider<GmailClient>((ref) => GoogleGmailClient());
 
 final gmailSyncServiceProvider = FutureProvider<GmailSyncService>((ref) async {
   return GmailSyncService(
-    config: ref.watch(gmailConfigProvider),
     oauth: ref.watch(oauthServiceProvider),
     tokens: ref.watch(secureTokenStoreProvider),
     client: ref.watch(gmailClientProvider),

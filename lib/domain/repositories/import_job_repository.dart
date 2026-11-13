@@ -6,6 +6,9 @@ abstract interface class ImportJobRepository {
   Future<ImportJob?> getById(String id);
 
   Future<List<ImportJob>> recent({int limit = 10});
+
+  /// Deletes import history for one source type and returns the row count.
+  Future<int> deleteBySourceType(String sourceType);
 }
 
 abstract interface class ReviewRepository {
@@ -23,6 +26,9 @@ abstract interface class ReviewRepository {
   });
 
   Future<void> dismiss(String id);
+
+  /// Deletes review items for one source type and returns the row count.
+  Future<int> deleteBySourceType(String sourceType);
 
   Future<void> deleteAll();
 }

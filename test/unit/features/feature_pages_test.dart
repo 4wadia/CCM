@@ -396,6 +396,7 @@ void main() {
     expect(find.text('Android SMS import'), findsOneWidget);
     expect(find.text('Grant permission'), findsOneWidget);
     expect(find.text('Import recent SMS'), findsOneWidget);
+    expect(find.text('Clear imported SMS'), findsOneWidget);
     expect(
       find.textContaining('Permission is required before any message'),
       findsOneWidget,

@@ -22,26 +22,32 @@ build, and device validation remain owner- or environment-blocked.
 
 ### Gmail (optional)
 
-Gmail is disabled unless a public OAuth client is supplied at build time. No client secret
-is used.
+**Android** uses Google Play services `AuthorizationClient`. No client ID, client secret, or
+refresh token is embedded in the APK. Google no longer accepts custom URI redirect schemes
+on Android, so the old `flutter_appauth` custom-scheme flow is not used on that platform.
+
+1. Create or select a Google Cloud project.
+2. Enable the Gmail API.
+3. Configure the OAuth consent screen and add test users.
+4. Create an OAuth client ID of type **Android** with package `app.creditcardmanager` and
+   the signing certificate SHA-1.
+5. Install the APK and use **Settings → Gmail statements → Connect Gmail**.
+
+The in-app **Setup help** dialog shows the debug SHA-1 for the published debug-signed APK.
+If the signing key changes, create a new Android OAuth client for the new SHA-1.
+
+**iOS** still uses Authorization Code + PKCE through `flutter_appauth` and needs a public
+client ID at build time:
 
 ```bash
-flutter build apk --debug \
+flutter build ios --debug \
   --dart-define=GMAIL_CLIENT_ID=<client-id>.apps.googleusercontent.com \
   --dart-define=GMAIL_REDIRECT_URI=com.googleusercontent.apps.<client-id>:/oauth2redirect
 ```
 
-For Android, `flutter_appauth` also needs the redirect scheme in the manifest. Set it with
-the `GMAIL_REDIRECT_SCHEME` environment variable or the `-PappAuthRedirectScheme` Gradle
-property:
-
-```bash
-GMAIL_REDIRECT_SCHEME=com.googleusercontent.apps.<client-id> flutter build apk --debug
-```
-
-The Gradle default is `app.creditcardmanager`, which keeps the build working when Gmail is
-not configured. Configure the Google Cloud OAuth client with the same redirect URI and add
-test users before validating sync.
+For iOS, register the same reversed-client-ID URL scheme in the Xcode target. Configure the
+Google Cloud OAuth client with the same redirect URI and add test users before validating
+sync.
 
 ### SMS
 

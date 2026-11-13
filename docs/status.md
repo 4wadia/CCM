@@ -11,8 +11,8 @@ remain the source of truth.
 | M1 Encrypted database and keys | Implemented (validation partial) | Host encryption/schema/repository tests pass; Android APK builds with SQLCipher and the Keystore channel. On-device keystore and iOS Keychain runtime tests are blocked |
 | M2 Cards and dashboard | Complete (host-verified) | Cards, reconciled outstanding balances, currency totals, available credit, utilisation, per-card summaries, archive confirmation, and schema v2 |
 | M3 Transaction engine | Implemented (host-verified) | Canonical ledger, filters, source provenance, fingerprints, idempotent import, review queue, card assignment, CSV export |
-| M4 Android SMS | Implemented (host-verified) | Permission-gated method channel, synthetic parser tests, import checkpointing, review fallback. No device or real-sample validation |
-| M5 Gmail | Implemented (host-verified) | Native PKCE OAuth, secure token storage, classifier, statement sync, checkpoints, review fallback. Real OAuth not exercised |
+| M4 Android SMS | Implemented (host-verified) | Permission-gated method channel, credit-card-only filtering, clear-imported-SMS cleanup, synthetic parser tests, import checkpointing, review fallback. No device or real-sample validation |
+| M5 Gmail | Implemented (host-verified) | Android Google Play services authorization, iOS PKCE, secure token storage, classifier, statement sync, checkpoints, review fallback. Real OAuth not exercised |
 | M6 PDF and adapters | Implemented (host-verified) | Encrypted PDF storage, Syncfusion extraction, declarative password rules, generic parser, reconciliation. No verified bank fixtures |
 | M7 Rewards and analytics | Implemented (host-verified) | Integer cashback calculator, basis-point rules, caps, reward accounts/entries, point estimates, analytics, rewards UI |
 | M8 Backup and restore | Implemented (host-verified) | Encrypted `.ccmbackup` create/restore, Argon2id + AES-256-GCM, statement re-encryption, token cleanup, local wipe |
@@ -108,15 +108,17 @@ to stderr. These are expected cipher diagnostics with no data content and the te
 - [x] `MethodChannelSmsPlatform`; iOS returns unsupported
 - [x] Generic conservative SMS parser with OTP/promotional exclusion, purchase/refund/payment/cash-advance/fee detection, and declined status
 - [x] SMS import service with permission gate, lookback window, checkpoint, and unparsed-message review
-- [x] Synthetic SMS parser tests
-- [x] Settings permission/import controls
+- [x] Credit-card-only relevance filtering; debit-card, account, UPI, ATM, and wallet alerts are skipped and counted
+- [x] Clear imported SMS data without deleting phone messages
+- [x] Synthetic SMS parser and filtering tests
+- [x] Settings permission/import/clear controls
 - [ ] Physical-device permission/runtime validation
 - [ ] Verified bank SMS adapters (requires anonymized samples)
 
 ## M5 checklist
 
-- [x] Build-time Gmail client configuration; no client secret in source
-- [x] Native Authorization Code + PKCE through `flutter_appauth`
+- [x] Android Google Play services authorization; no client ID or secret in the APK
+- [x] iOS Authorization Code + PKCE through `flutter_appauth` with build-time client configuration
 - [x] Secure token storage through `flutter_secure_storage`; opaque DB reference only
 - [x] Gmail client with pagination, MIME attachment discovery, retries, and typed failures
 - [x] Statement-email classifier using metadata only

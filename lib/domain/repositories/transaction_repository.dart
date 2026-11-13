@@ -58,5 +58,23 @@ abstract interface class TransactionRepository {
 
   Future<List<TransactionSource>> sourcesFor(String transactionId);
 
+  /// Removes raw source rows of [sourceType] and deletes transactions that have
+  /// no other source. Transactions that also came from a statement are kept.
+  Future<SourceCleanupResult> clearImportedSource(
+    TransactionSourceType sourceType,
+  );
+
   Future<void> deleteAll();
+}
+
+class SourceCleanupResult {
+  const SourceCleanupResult({
+    this.deletedTransactions = 0,
+    this.deletedSources = 0,
+    this.retainedTransactions = 0,
+  });
+
+  final int deletedTransactions;
+  final int deletedSources;
+  final int retainedTransactions;
 }

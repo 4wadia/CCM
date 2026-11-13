@@ -48,6 +48,13 @@ class ImportJobRepositoryImpl implements ImportJobRepository {
     return rows.map(_toEntity).toList(growable: false);
   }
 
+  @override
+  Future<int> deleteBySourceType(String sourceType) {
+    return (_db.delete(
+      _db.importJobs,
+    )..where((table) => table.sourceType.equals(sourceType))).go();
+  }
+
   ImportJob _toEntity(ImportJobRow row) {
     return ImportJob(
       id: row.id,
@@ -148,6 +155,13 @@ class ReviewRepositoryImpl implements ReviewRepository {
         resolvedAt: Value(DateTime.now().toUtc()),
       ),
     );
+  }
+
+  @override
+  Future<int> deleteBySourceType(String sourceType) {
+    return (_db.delete(
+      _db.reviewItems,
+    )..where((table) => table.sourceType.equals(sourceType))).go();
   }
 
   @override

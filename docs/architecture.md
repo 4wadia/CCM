@@ -136,7 +136,8 @@ statement pipeline. Android SMS feeds parsed alerts into the same import pipelin
 |---|---|
 | Keystore / Keychain key store (`app.creditcardmanager/security`) | Implemented M1 |
 | SMS read + permission (`app.creditcardmanager/sms`) | Implemented M4, Android only |
-| OAuth broker / secure token storage | Implemented M5 via `flutter_appauth` + `flutter_secure_storage` |
+| Google authorization (`app.creditcardmanager/googleauth`) | Implemented M5, Android only; iOS uses `flutter_appauth` |
+| Secure token storage | Implemented M5 via `flutter_secure_storage` |
 | PDF extraction | Implemented M6 via `syncfusion_flutter_pdf` |
 | Background tasks | Not implemented; sync is user-triggered |
 

@@ -228,16 +228,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AsyncValue<SyncCheckpoint?> checkpoint,
   ) {
     if (!configured) {
-      return const AppCard(
+      return AppCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Gmail is disabled in this build.'),
-            SizedBox(height: 6),
-            Text(
-              'Provide GMAIL_CLIENT_ID and GMAIL_REDIRECT_URI with '
-              '--dart-define at build time to enable native OAuth. No client '
-              'secret or token is stored in the database.',
+            const Text('Gmail is disabled in this build.'),
+            const SizedBox(height: 6),
+            const Text(
+              'On Android, Gmail uses Google Play services and needs an Android '
+              'OAuth client for this package and signing certificate. On iOS, '
+              'provide GMAIL_CLIENT_ID and GMAIL_REDIRECT_URI at build time. '
+              'No client secret or token is stored in the database.',
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _showGmailSetupHelp,
+              icon: const Icon(Icons.help_outline),
+              label: const Text('Setup help'),
             ),
           ],
         ),
@@ -257,16 +264,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     'read-only and is limited to statement messages.',
                   ),
                   const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _isBusy ? null : _connectGmail,
-                    icon: _busy == 'gmail-connect'
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.link),
-                    label: const Text('Connect Gmail'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _isBusy ? null : _connectGmail,
+                        icon: _busy == 'gmail-connect'
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.link),
+                        label: const Text('Connect Gmail'),
+                      ),
+                      TextButton.icon(
+                        onPressed: _showGmailSetupHelp,
+                        icon: const Icon(Icons.help_outline),
+                        label: const Text('Setup help'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -356,8 +376,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               error: (_, _) => const Text('Permission status unavailable.'),
               data: (granted) => Text(
                 granted
-                    ? 'Permission granted. Only transaction alert messages are '
-                          'parsed; raw inbox contents are not uploaded.'
+                    ? 'Permission granted. Only credit-card transaction alerts '
+                          'are parsed; debit-card, bank-account, UPI, ATM, and '
+                          'wallet messages are skipped. Raw inbox contents are '
+                          'not uploaded.'
                     : 'Permission is required before any message can be read.',
               ),
             ),
@@ -382,7 +404,69 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     : const Icon(Icons.download_outlined),
                 label: const Text('Import recent SMS'),
               ),
+              OutlinedButton.icon(
+                onPressed: _isBusy ? null : _clearSms,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                icon: _busy == 'sms-clear'
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_sweep_outlined),
+                label: const Text('Clear imported SMS'),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showGmailSetupHelp() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set up Gmail access'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Android uses Google Play services for authorization. The app '
+                'does not embed a client secret or refresh token.',
+              ),
+              SizedBox(height: 12),
+              Text('1. Create or select a Google Cloud project.'),
+              Text('2. Enable the Gmail API for that project.'),
+              Text(
+                '3. Configure the OAuth consent screen and add your Google '
+                'account as a test user.',
+              ),
+              Text('4. Create an OAuth client ID of type Android with:'),
+              SizedBox(height: 6),
+              SelectableText('Package: app.creditcardmanager'),
+              SelectableText(
+                'SHA-1: 7E:34:4B:52:D0:99:39:52:85:71:B4:71:A8:D1:AE:35:'
+                'C6:3B:EC:16',
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Then tap Connect Gmail. Access is read-only and limited to '
+                'Gmail messages that may contain statement PDFs. Tokens stay in '
+                'Android secure storage; the database stores only an opaque '
+                'reference.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -474,8 +558,50 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ref.invalidate(smsPermissionProvider);
       _showMessage(
         'Read ${result.messagesRead} messages · '
+        '${result.creditCardAlerts} credit-card alerts · '
         '${result.imported} imported · ${result.skipped} skipped · '
-        '${result.requiresReview} need review.',
+        '${result.requiresReview} need review · '
+        '${result.ignored} non-credit ignored.',
+      );
+    });
+  }
+
+  Future<void> _clearSms() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear imported SMS data?'),
+        content: const Text(
+          'This removes SMS-imported transactions, SMS review items, and SMS '
+          'import history from this app. It does not delete any messages from '
+          'your phone inbox. Statements and manually entered transactions are '
+          'kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Clear SMS data'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _run('sms-clear', () async {
+      final service = await ref.read(smsImportServiceProvider.future);
+      final result = await service.clearImported();
+      _invalidateAfterImport();
+      ref.invalidate(smsPermissionProvider);
+      _showMessage(
+        'Cleared ${result.deletedTransactions} SMS transactions and '
+        '${result.deletedReviews} review items. '
+        'Phone messages were not changed.',
       );
     });
   }

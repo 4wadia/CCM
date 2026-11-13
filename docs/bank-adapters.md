@@ -60,7 +60,8 @@ improve card matching. They do not imply a verified bank adapter.
 
 ### Access
 
-- Authorization Code + PKCE through `flutter_appauth`; no client secret.
+- Android uses Google Play services `AuthorizationClient`; iOS uses Authorization Code +
+  PKCE through `flutter_appauth`. No client secret is embedded.
 - Read-only Gmail scope plus `openid` and `email`.
 - Tokens are stored only in platform secure storage; the database keeps an opaque
   reference.

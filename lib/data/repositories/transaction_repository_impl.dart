@@ -211,6 +211,68 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<SourceCleanupResult> clearImportedSource(
+    TransactionSourceType sourceType,
+  ) async {
+    return _db.transaction(() async {
+      final sourceRows = await (_db.select(
+        _db.transactionSources,
+      )..where((table) => table.sourceType.equals(sourceType.name))).get();
+      if (sourceRows.isEmpty) return const SourceCleanupResult();
+
+      final sourceIds = sourceRows.map((row) => row.id).toList(growable: false);
+      final transactionIds = sourceRows
+          .map((row) => row.transactionId)
+          .whereType<String>()
+          .toSet()
+          .toList(growable: false);
+      await (_db.delete(
+        _db.transactionSources,
+      )..where((table) => table.id.isIn(sourceIds))).go();
+
+      var deletedTransactions = 0;
+      if (transactionIds.isNotEmpty) {
+        final remainingRows =
+            await (_db.selectOnly(_db.transactionSources)
+                  ..addColumns([_db.transactionSources.transactionId])
+                  ..where(
+                    _db.transactionSources.transactionId.isIn(transactionIds),
+                  ))
+                .get();
+        final stillReferenced = remainingRows
+            .map((row) => row.read(_db.transactionSources.transactionId))
+            .whereType<String>()
+            .toSet();
+        final orphanIds = transactionIds
+            .where((id) => !stillReferenced.contains(id))
+            .toList(growable: false);
+        if (orphanIds.isNotEmpty) {
+          await (_db.update(
+            _db.statementTransactions,
+          )..where((table) => table.transactionId.isIn(orphanIds))).write(
+            const StatementTransactionsCompanion(transactionId: Value(null)),
+          );
+          await (_db.delete(
+            _db.cashbackEntries,
+          )..where((table) => table.transactionId.isIn(orphanIds))).go();
+          await (_db.delete(
+            _db.rewardEntries,
+          )..where((table) => table.transactionId.isIn(orphanIds))).go();
+          deletedTransactions = await (_db.delete(
+            _db.transactions,
+          )..where((table) => table.id.isIn(orphanIds))).go();
+        }
+      }
+
+      return SourceCleanupResult(
+        deletedTransactions: deletedTransactions,
+        deletedSources: sourceIds.length,
+        retainedTransactions: transactionIds.length - deletedTransactions,
+      );
+    });
+  }
+
+  @override
   Future<void> deleteAll() async {
     await _db.delete(_db.transactionSources).go();
     await _db.delete(_db.transactions).go();

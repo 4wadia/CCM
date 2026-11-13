@@ -79,9 +79,10 @@ Important conventions:
   fingerprint.
 - Transaction source references are unique per source type; ambiguity is preserved in
   review records rather than dropped.
-- Gmail access/refresh tokens are never stored in these tables. `email_accounts` stores
-  only `secure_token_reference`; tokens live in Android Keystore-backed storage or the
-  iOS Keychain.
+- Gmail access tokens (and iOS refresh tokens, when present) are never stored in these
+  tables. `email_accounts` stores only `secure_token_reference`; tokens live in Android
+  Keystore-backed storage or the iOS Keychain. Android obtains short-lived access tokens
+  from Google Play services and does not store a refresh token.
 - Statement PDFs are stored as AES-256-GCM `.ccmenc` files with opaque names. The database
   stores the opaque name, file hash, and size, never plaintext.
 - Sensitive text is protected by whole-database encryption. Columns are not named

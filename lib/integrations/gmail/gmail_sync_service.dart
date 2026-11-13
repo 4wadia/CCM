@@ -11,7 +11,6 @@ import '../../domain/services/ids.dart';
 import '../pdf/password_strategy.dart';
 import '../pdf/statement_import_service.dart';
 import 'gmail_client.dart';
-import 'gmail_config.dart';
 import 'oauth_service.dart';
 import 'secure_token_store.dart';
 
@@ -33,7 +32,6 @@ class GmailSyncResult {
 /// run completes; candidate processing is idempotent through statement hashes.
 class GmailSyncService {
   GmailSyncService({
-    required this.config,
     required OAuthService oauth,
     required SecureTokenStore tokens,
     required GmailClient client,
@@ -49,7 +47,6 @@ class GmailSyncService {
        _reviews = reviews,
        _statements = statements;
 
-  final GmailConfig config;
   final OAuthService _oauth;
   final SecureTokenStore _tokens;
   final GmailClient _client;
@@ -58,7 +55,7 @@ class GmailSyncService {
   final ReviewRepository _reviews;
   final StatementImportService _statements;
 
-  bool get isConfigured => config.isConfigured && _oauth.isConfigured;
+  bool get isConfigured => _oauth.isConfigured;
 
   Future<EmailAccount> connect({String? loginHint}) async {
     if (!isConfigured) {
@@ -113,7 +110,7 @@ class GmailSyncService {
     final tokens = await _tokens.read(account.secureTokenReference);
     try {
       if (tokens != null) {
-        await _oauth.revoke(tokens.refreshToken);
+        await _oauth.revoke(tokens.refreshToken ?? tokens.accessToken);
       }
     } catch (_) {
       // Local removal still happens. The UI warns that remote revocation may

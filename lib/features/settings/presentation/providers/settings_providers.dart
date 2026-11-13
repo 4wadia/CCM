@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/providers.dart';
 import '../../../../domain/entities/email_account.dart';
 import '../../../../domain/entities/import_job.dart';
-import '../../../../integrations/gmail/gmail_config.dart';
 
 final gmailStatusProvider = FutureProvider<EmailAccount?>((ref) async {
   final repository = await ref.watch(emailAccountRepositoryProvider.future);
@@ -23,11 +22,7 @@ final importJobsProvider = FutureProvider<List<ImportJob>>((ref) async {
 });
 
 final gmailConfiguredProvider = Provider<bool>(
-  (ref) => ref.watch(gmailConfigProvider).isConfigured,
-);
-
-final gmailConfigValueProvider = Provider<GmailConfig>(
-  (ref) => ref.watch(gmailConfigProvider),
+  (ref) => ref.watch(oauthServiceProvider).isConfigured,
 );
 
 final smsSupportedProvider = Provider<bool>(

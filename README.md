@@ -53,17 +53,29 @@ flutter build apk --debug
 ./tool/check.sh          # format check + analyze + tests + debug build
 ```
 
-Gmail is optional and disabled unless configured at build time:
+Gmail is optional. Android uses Google Play services authorization and does not
+need a client ID at build time:
+
+1. Create or select a Google Cloud project.
+2. Enable the Gmail API.
+3. Configure the OAuth consent screen and add your Google account as a test user.
+4. Create an OAuth client ID of type **Android** with package
+   `app.creditcardmanager` and the app signing SHA-1. The in-app **Setup help**
+   dialog shows the debug SHA-1 for this build.
+
+The app requests read-only Gmail access. It stores an opaque token reference in
+the encrypted database and the token itself only in Android secure storage.
+
+iOS still uses Authorization Code + PKCE through `flutter_appauth` and needs a
+build-time client ID:
 
 ```bash
-flutter build apk --debug \
+flutter build ios --debug \
   --dart-define=GMAIL_CLIENT_ID=<client-id>.apps.googleusercontent.com \
   --dart-define=GMAIL_REDIRECT_URI=com.googleusercontent.apps.<client-id>:/oauth2redirect
 ```
 
-For Android, also set the `flutter_appauth` redirect scheme with
-`GMAIL_REDIRECT_SCHEME=com.googleusercontent.apps.<client-id>` (or the
-`-PappAuthRedirectScheme` Gradle property). See [`docs/release.md`](docs/release.md).
+See [`docs/release.md`](docs/release.md).
 
 ## Project layout
 

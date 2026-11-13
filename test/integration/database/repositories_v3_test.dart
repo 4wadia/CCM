@@ -339,6 +339,43 @@ void main() {
       expect(await transactions.count(const TransactionFilter()), 0);
       expect(await transactions.sourcesFor('tx_1'), isEmpty);
     });
+
+    test(
+      'clears one source type without deleting shared transactions',
+      () async {
+        await transactions.insertWithSource(
+          transaction: transaction(),
+          source: source(),
+        );
+        await transactions.linkSource(
+          source(
+            id: 'source_pdf',
+            reference: 'pdf:1',
+            type: TransactionSourceType.pdfStatement,
+          ),
+        );
+        await transactions.insertWithSource(
+          transaction: transaction(id: 'tx_2', fingerprint: 'two'),
+          source: source(
+            id: 'source_sms_2',
+            transactionId: 'tx_2',
+            reference: 'sms:2',
+          ),
+        );
+
+        final result = await transactions.clearImportedSource(
+          TransactionSourceType.sms,
+        );
+
+        expect(result.deletedSources, 2);
+        expect(result.deletedTransactions, 1);
+        expect(result.retainedTransactions, 1);
+        expect(await transactions.getById('tx_1'), isNotNull);
+        expect(await transactions.getById('tx_2'), isNull);
+        final remaining = await transactions.sourcesFor('tx_1');
+        expect(remaining.single.sourceType, TransactionSourceType.pdfStatement);
+      },
+    );
   });
 
   group('import jobs and reviews', () {

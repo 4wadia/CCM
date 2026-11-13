@@ -53,14 +53,19 @@ class SyncCheckpoint {
 class OAuthTokens {
   const OAuthTokens({
     required this.accessToken,
-    required this.refreshToken,
     required this.expiresAt,
+    this.refreshToken,
     this.emailAddress,
     this.scopes = const <String>[],
   });
 
   final String accessToken;
-  final String refreshToken;
+
+  /// Present for authorization-code flows that return an offline token. The
+  /// Android Google Play services authorization flow returns short-lived access
+  /// tokens instead and renews them through the platform without storing a
+  /// refresh token.
+  final String? refreshToken;
   final DateTime expiresAt;
   final String? emailAddress;
   final List<String> scopes;
