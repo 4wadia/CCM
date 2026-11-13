@@ -450,8 +450,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               SizedBox(height: 6),
               SelectableText('Package: app.creditcardmanager'),
               SelectableText(
-                'SHA-1: 7E:34:4B:52:D0:99:39:52:85:71:B4:71:A8:D1:AE:35:'
-                'C6:3B:EC:16',
+                'SHA-1: 09:7C:95:19:FE:C0:84:65:4A:43:B7:55:FE:04:D6:C9:'
+                'BC:BF:EB:26',
               ),
               SizedBox(height: 12),
               Text(
