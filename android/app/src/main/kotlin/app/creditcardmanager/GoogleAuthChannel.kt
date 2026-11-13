@@ -58,37 +58,41 @@ class GoogleAuthChannel(private val activity: Activity) : MethodChannel.MethodCa
             )
             .build()
 
-        client.authorize(request)
-            .addOnSuccessListener { authorizationResult ->
-                if (authorizationResult.hasResolution()) {
-                    val pendingIntent = authorizationResult.pendingIntent
-                    if (pendingIntent == null) {
-                        finishError("no_resolution", "Google authorization could not start.")
-                        return@addOnSuccessListener
+        try {
+            client.authorize(request)
+                .addOnSuccessListener { authorizationResult ->
+                    if (authorizationResult.hasResolution()) {
+                        val pendingIntent = authorizationResult.pendingIntent
+                        if (pendingIntent == null) {
+                            finishError("no_resolution", "Google authorization could not start.")
+                            return@addOnSuccessListener
+                        }
+                        try {
+                            activity.startIntentSenderForResult(
+                                pendingIntent.intentSender,
+                                REQUEST_CODE,
+                                null,
+                                0,
+                                0,
+                                0,
+                            )
+                        } catch (error: Exception) {
+                            finishError(
+                                "launch_failed",
+                                "Google authorization could not start.",
+                                error,
+                            )
+                        }
+                    } else {
+                        finishSuccess(authorizationResult)
                     }
-                    try {
-                        activity.startIntentSenderForResult(
-                            pendingIntent.intentSender,
-                            REQUEST_CODE,
-                            null,
-                            0,
-                            0,
-                            0,
-                        )
-                    } catch (error: Exception) {
-                        finishError(
-                            "launch_failed",
-                            "Google authorization could not start.",
-                            error,
-                        )
-                    }
-                } else {
-                    finishSuccess(authorizationResult)
                 }
-            }
-            .addOnFailureListener { error ->
-                finishError("authorize_failed", "Google authorization failed.", error)
-            }
+                .addOnFailureListener { error ->
+                    finishError("authorize_failed", "Google authorization failed.", error)
+                }
+        } catch (error: Exception) {
+            finishError("authorize_failed", "Google authorization failed.", error)
+        }
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
