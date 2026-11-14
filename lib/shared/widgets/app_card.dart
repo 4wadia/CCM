@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A styled surface card with optional tap handling.
 ///
@@ -13,6 +13,8 @@ class AppCard extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius,
+    this.color,
+    this.borderColor,
   });
 
   final Widget child;
@@ -24,8 +26,14 @@ class AppCard extends StatelessWidget {
   /// Defaults to `EdgeInsets.zero`.
   final EdgeInsetsGeometry? margin;
 
-  /// Defaults to `BorderRadius.circular(12)`.
+  /// Defaults to `AppRadius.card`.
   final BorderRadius? borderRadius;
+
+  /// Override card colour.
+  final Color? color;
+
+  /// Override border colour.
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +43,18 @@ class AppCard extends StatelessWidget {
     final effectiveBorderRadius = borderRadius ?? BorderRadius.circular(12);
 
     final cardColor =
-        theme.cardTheme.color ?? theme.colorScheme.surfaceContainerLow;
+        color ?? theme.cardTheme.color ?? theme.colorScheme.surfaceContainerLow;
     final cardElevation = theme.cardTheme.elevation ?? 0;
+
+    final resolvedBorderColor =
+        borderColor ??
+        (theme.cardTheme.shape is RoundedRectangleBorder
+            ? (theme.cardTheme.shape! as RoundedRectangleBorder).side.color
+            : theme.colorScheme.outline);
+
     final cardShape = RoundedRectangleBorder(
       borderRadius: effectiveBorderRadius,
-      side: theme.cardTheme.shape is RoundedRectangleBorder
-          ? (theme.cardTheme.shape! as RoundedRectangleBorder).side
-          : BorderSide.none,
+      side: BorderSide(color: resolvedBorderColor, width: 0.5),
     );
 
     Widget content = Padding(padding: effectivePadding, child: child);

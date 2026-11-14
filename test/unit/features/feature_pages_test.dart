@@ -1,6 +1,7 @@
 import 'package:credit_card_manager/domain/entities/bank.dart';
 import 'package:credit_card_manager/domain/entities/cashback.dart';
 import 'package:credit_card_manager/domain/entities/credit_card.dart';
+import 'package:credit_card_manager/domain/entities/email_account.dart';
 import 'package:credit_card_manager/domain/entities/import_job.dart';
 import 'package:credit_card_manager/domain/entities/reward.dart';
 import 'package:credit_card_manager/domain/entities/statement.dart';
@@ -12,8 +13,8 @@ import 'package:credit_card_manager/features/settings/presentation/pages/setting
 import 'package:credit_card_manager/features/statements/presentation/pages/statements_page.dart';
 import 'package:credit_card_manager/features/transactions/presentation/pages/transactions_page.dart';
 import 'package:credit_card_manager/shared/theme/app_theme.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../fakes/test_overrides.dart';
 
@@ -47,6 +48,19 @@ void main() {
       updatedAt: now,
     );
   }
+
+  EmailAccount emailAccount() => EmailAccount(
+    id: 'email_1',
+    provider: 'gmail',
+    emailAddress: 'reader@example.com',
+    secureTokenReference: 'secure_ref',
+    status: 'connected',
+    syncEnabled: true,
+    connectedAt: now,
+    lastSuccessfulSync: now,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   CardTransaction transaction({
     String id = 'tx_1',
@@ -324,60 +338,113 @@ void main() {
     expect(find.text('Recent cashback entries'), findsOneWidget);
   });
 
-  testWidgets(
-    'settings page is explicit about local-only and platform limits',
-    (tester) async {
-      await tester.pumpWidget(
-        page(
-          const SettingsPage(),
-          scope: (child) => testProviderScope(
-            gmailConfigured: false,
-            smsSupported: false,
-            child: child,
-          ),
+  testWidgets('account page is compact and explains platform limits', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      page(
+        const SettingsPage(),
+        scope: (child) => testProviderScope(
+          gmailConfigured: false,
+          smsSupported: false,
+          child: child,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('settings-page')), findsOneWidget);
-      expect(find.text('Local-first by design'), findsOneWidget);
-      expect(
-        find.textContaining('no analytics SDK, cloud database'),
-        findsOneWidget,
-      );
-      expect(find.text('Gmail is disabled in this build.'), findsOneWidget);
-      expect(
-        find.textContaining('SMS import is unavailable on this platform'),
-        findsOneWidget,
-      );
-      await tester.scrollUntilVisible(
-        find.textContaining('Argon2id and authenticated AES-256-GCM'),
-        300,
-      );
-      expect(
-        find.textContaining('Argon2id and authenticated AES-256-GCM'),
-        findsOneWidget,
-      );
-      await tester.scrollUntilVisible(
-        find.text('No imports have run on this device yet.'),
-        300,
-      );
-      expect(
-        find.text('No imports have run on this device yet.'),
-        findsOneWidget,
-      );
-      await tester.scrollUntilVisible(
-        find.text('Credit Card Manager · local-only build'),
-        300,
-      );
-      expect(
-        find.text('Credit Card Manager · local-only build'),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(find.byKey(const Key('settings-page')), findsOneWidget);
+    expect(find.text('Account'), findsOneWidget);
+    expect(find.text('Gmail is not configured in this build.'), findsOneWidget);
+    expect(
+      find.textContaining('SMS import is unavailable on this platform'),
+      findsOneWidget,
+    );
+    expect(find.text('Import PDF statement'), findsOneWidget);
+    expect(find.text('Backup, restore & export'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('Encrypted on this device'),
+      300,
+    );
+    expect(find.textContaining('Encrypted on this device'), findsOneWidget);
+    expect(find.text('Local-first by design'), findsNothing);
+    expect(find.text('Import history'), findsNothing);
+    expect(find.text('Danger zone'), findsNothing);
+  });
 
-  testWidgets('settings page shows Android SMS controls when supported', (
+  testWidgets('data options sheet keeps backup and wipe behind one row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      page(
+        const SettingsPage(),
+        scope: (child) => testProviderScope(
+          gmailConfigured: false,
+          smsSupported: false,
+          child: child,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Backup, restore & export'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create encrypted backup'), findsOneWidget);
+    expect(find.textContaining('Argon2id'), findsOneWidget);
+    expect(find.text('Restore from backup'), findsOneWidget);
+    expect(find.text('Export transactions as CSV'), findsOneWidget);
+    expect(find.text('Delete all local data'), findsOneWidget);
+  });
+
+  testWidgets('account page shows the connected Gmail address', (tester) async {
+    final account = emailAccount();
+    await tester.pumpWidget(
+      page(
+        const SettingsPage(),
+        scope: (child) => testProviderScope(
+          gmailConfigured: true,
+          emailAccount: account,
+          cards: [card()],
+          smsSupported: false,
+          child: child,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Connected Gmail'), findsOneWidget);
+    expect(find.text(account.emailAddress), findsOneWidget);
+    expect(find.text('Fetch card emails'), findsOneWidget);
+    expect(find.text('Read statements'), findsOneWidget);
+  });
+
+  testWidgets('fetch card SMS shows an error when no cards exist', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      page(
+        const SettingsPage(),
+        scope: (child) => testProviderScope(
+          gmailConfigured: false,
+          smsSupported: true,
+          smsPermission: true,
+          child: child,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fetch card SMS'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Add a credit card before fetching messages.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('account page shows Android SMS controls when supported', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -393,9 +460,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Android SMS import'), findsOneWidget);
+    expect(find.text('Android SMS alerts'), findsOneWidget);
     expect(find.text('Grant permission'), findsOneWidget);
-    expect(find.text('Import recent SMS'), findsOneWidget);
+    expect(find.text('Fetch card SMS'), findsOneWidget);
+    expect(find.text('Read transactions'), findsOneWidget);
     expect(find.text('Clear imported SMS'), findsOneWidget);
     expect(
       find.textContaining('Permission is required before any message'),

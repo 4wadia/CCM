@@ -111,7 +111,7 @@ to stderr. These are expected cipher diagnostics with no data content and the te
 - [x] Credit-card-only relevance filtering; debit-card, account, UPI, ATM, and wallet alerts are skipped and counted
 - [x] Clear imported SMS data without deleting phone messages
 - [x] Synthetic SMS parser and filtering tests
-- [x] Settings permission/import/clear controls
+- [x] Account permission/import/clear controls
 - [ ] Physical-device permission/runtime validation
 - [ ] Verified bank SMS adapters (requires anonymized samples)
 
@@ -164,7 +164,7 @@ to stderr. These are expected cipher diagnostics with no data content and the te
 - [x] Restore validation before table replacement and file cleanup on failure
 - [x] Stale token deletion after successful restore
 - [x] Full local wipe of database, statement files, keys, and tokens
-- [x] Settings backup/restore/wipe UI
+- [x] Account backup/restore/wipe UI
 - [x] Backup/restore integration tests
 - [ ] Device-level backup file picking and wipe validation
 

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
-/// Design tokens for typography.
+/// Premium typography system.
 ///
-/// Uses the platform font stack. No font is fetched at runtime: the app is
-/// local-first and must render correctly offline.
+/// Uses the system font stack with carefully tuned sizes, weights, and spacing
+/// to create clear visual hierarchy and a refined reading experience.
 abstract final class AppTypography {
   static TextTheme textTheme({
     required Color primaryColor,
@@ -29,37 +29,47 @@ abstract final class AppTypography {
     }
 
     return TextTheme(
+      // Hero amounts — dashboard totals.
       displayLarge: style(
         base.displayLarge,
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: FontWeight.w700,
         color: primaryColor,
-        letterSpacing: -0.5,
+        letterSpacing: -1.0,
+        height: 1.1,
       ),
+      // Section headings.
       displayMedium: style(
         base.displayMedium,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: primaryColor,
         letterSpacing: -0.5,
+        height: 1.15,
       ),
+      // Sub-heading.
       displaySmall: style(
         base.displaySmall,
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: primaryColor,
+        letterSpacing: -0.3,
+        height: 1.2,
       ),
+      // Page titles.
       headlineLarge: style(
         base.headlineLarge,
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: primaryColor,
+        letterSpacing: -0.3,
       ),
       headlineMedium: style(
         base.headlineMedium,
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: primaryColor,
+        letterSpacing: -0.2,
       ),
       headlineSmall: style(
         base.headlineSmall,
@@ -67,24 +77,28 @@ abstract final class AppTypography {
         fontWeight: FontWeight.w600,
         color: primaryColor,
       ),
+      // Card / section titles.
       titleLarge: style(
         base.titleLarge,
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: FontWeight.w600,
         color: primaryColor,
+        letterSpacing: -0.2,
       ),
       titleMedium: style(
         base.titleMedium,
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w600,
         color: primaryColor,
+        letterSpacing: -0.1,
       ),
       titleSmall: style(
         base.titleSmall,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: primaryColor,
       ),
+      // Body.
       bodyLarge: style(
         base.bodyLarge,
         fontSize: 16,
@@ -101,11 +115,12 @@ abstract final class AppTypography {
       ),
       bodySmall: style(
         base.bodySmall,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
         color: secondaryColor,
         height: 1.4,
       ),
+      // Labels & captions.
       labelLarge: style(
         base.labelLarge,
         fontSize: 14,
@@ -120,10 +135,10 @@ abstract final class AppTypography {
       ),
       labelSmall: style(
         base.labelSmall,
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w500,
         color: secondaryColor,
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
       ),
     );
   }

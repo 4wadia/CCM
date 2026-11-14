@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:credit_card_manager/core/errors/app_failure.dart';
 import 'package:credit_card_manager/data/database/app_database.dart';
 import 'package:credit_card_manager/data/database/database_factory.dart';
 import 'package:credit_card_manager/data/repositories/bank_repository_impl.dart';
@@ -25,6 +26,7 @@ class FakeSmsPlatform implements SmsPlatform {
 
   final List<SmsMessage> messages;
   bool permission;
+  int readCalls = 0;
 
   @override
   bool get isSupported => true;
@@ -41,6 +43,7 @@ class FakeSmsPlatform implements SmsPlatform {
     DateTime? to,
     int limit = 500,
   }) async {
+    readCalls++;
     return messages
         .where((message) => !message.receivedAt.isBefore(from))
         .take(limit)
@@ -176,6 +179,20 @@ void main() {
       expect(open.single.sourceType, 'sms');
     },
   );
+
+  test('refuses to read the inbox when no active card exists', () async {
+    await cards.archive('card_1');
+
+    await expectLater(
+      service.importRecent(),
+      throwsA(
+        isA<AppFailure>().having((error) => error.code, 'code', 'CCM-SMS-006'),
+      ),
+    );
+
+    expect(platform.readCalls, 0);
+    expect(await transactions.count(const TransactionFilter()), 0);
+  });
 
   test('clears SMS-imported data without touching the phone inbox', () async {
     await service.importRecent();

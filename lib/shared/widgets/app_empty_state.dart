@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A centred empty-state placeholder with an icon, title, optional subtitle,
 /// and an optional action button.

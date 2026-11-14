@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../core/errors/app_failure.dart';
@@ -80,7 +80,7 @@ class _StatementsPageState extends ConsumerState<StatementsPage> {
                         title: 'No statements yet',
                         subtitle:
                             'Import an encrypted PDF locally, or connect Gmail '
-                            'in Settings to fetch statements from your issuer.',
+                            'in Account to fetch credit-card statements.',
                         actionLabel: 'Import PDF',
                         onAction: _importPdf,
                       ),

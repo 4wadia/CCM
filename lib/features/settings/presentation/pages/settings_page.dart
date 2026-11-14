@@ -2,19 +2,18 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../app/router.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../../domain/entities/email_account.dart';
-import '../../../../domain/entities/import_job.dart';
 import '../../../../domain/services/csv_exporter.dart';
 import '../../../../shared/formatting/date_format.dart';
+import '../../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../../shared/widgets/app_card.dart';
-import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_loading_state.dart';
 import '../../../cards/presentation/providers/card_providers.dart';
 import '../../../home/presentation/providers/home_providers.dart';
@@ -42,48 +41,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final checkpoint = ref.watch(syncCheckpointProvider);
     final smsSupported = ref.watch(smsSupportedProvider);
     final smsPermission = ref.watch(smsPermissionProvider);
-    final jobs = ref.watch(importJobsProvider);
 
     return Scaffold(
       key: const Key('settings-page'),
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: const Text('Account')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
         children: [
-          const _SectionLabel('Privacy and storage'),
-          const AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.lock_outline),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Local-first by design',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Card data, transactions, statements, and reward balances '
-                  'stay in an encrypted local database. There is no analytics '
-                  'SDK, cloud database, or remote financial processing.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          const _SectionLabel('Gmail statements'),
+          const _SectionLabel('Connected account'),
           _gmailSection(context, configured, gmail, checkpoint),
           const SizedBox(height: 18),
-          const _SectionLabel('SMS transaction alerts'),
+          const _SectionLabel('SMS alerts'),
           _smsSection(context, smsSupported, smsPermission),
           const SizedBox(height: 18),
-          const _SectionLabel('Statements and exports'),
+          const _SectionLabel('Data'),
           AppCard(
             child: Column(
               children: [
@@ -92,8 +63,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   leading: const Icon(Icons.description_outlined),
                   title: const Text('Import PDF statement'),
                   subtitle: const Text(
-                    'Choose a PDF from local storage. Passwords are used only '
-                    'in memory and are never stored.',
+                    'Choose a PDF from local storage. Passwords stay in memory.',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _isBusy
@@ -103,118 +73,89 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const Divider(),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.ios_share_outlined),
-                  title: const Text('Export transactions as CSV'),
+                  leading: const Icon(Icons.folder_outlined),
+                  title: const Text('Backup, restore & export'),
                   subtitle: const Text(
-                    'Export the most recent 1,000 transactions with only the '
-                    'last four card digits.',
+                    'Encrypted backups, CSV export, and local data controls.',
                   ),
-                  trailing: _busy == 'csv'
+                  trailing: _busy == 'backup' || _busy == 'restore'
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.chevron_right),
-                  onTap: _isBusy ? null : _exportCsv,
+                  onTap: _isBusy ? null : _showDataOptions,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          const _SectionLabel('Encrypted backup'),
-          AppCard(
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.backup_outlined),
-                  title: const Text('Create encrypted backup'),
-                  subtitle: const Text(
-                    'Creates a portable .ccmbackup envelope with Argon2id and '
-                    'authenticated AES-256-GCM encryption. OAuth tokens and '
-                    'device keys are excluded.',
-                  ),
-                  trailing: _busy == 'backup'
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.chevron_right),
-                  onTap: _isBusy ? null : _createBackup,
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.restore_outlined),
-                  title: const Text('Restore from backup'),
-                  subtitle: const Text(
-                    'Restoring replaces local card, transaction, statement, and '
-                    'reward data. Gmail credentials must be reconnected.',
-                  ),
-                  trailing: _busy == 'restore'
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.chevron_right),
-                  onTap: _isBusy ? null : _restoreBackup,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          const _SectionLabel('Import history'),
-          jobs.when(
-            loading: () =>
-                const AppLoadingState(message: 'Loading import history…'),
-            error: (_, _) => AppErrorState(
-              message: 'Import history could not be loaded.',
-              onRetry: () => ref.invalidate(importJobsProvider),
-            ),
-            data: (items) => items.isEmpty
-                ? const AppCard(
-                    child: Text('No imports have run on this device yet.'),
-                  )
-                : Column(
-                    children: [
-                      for (final job in items) _ImportJobTile(job: job),
-                    ],
-                  ),
-          ),
-          const SizedBox(height: 18),
-          const _SectionLabel('Danger zone'),
-          AppCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.delete_forever_outlined,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              title: const Text('Delete all local data'),
-              subtitle: const Text(
-                'Destroys the encrypted database, statement files, local keys, '
-                'and Gmail tokens. This cannot be undone and there is no '
-                'remote copy.',
-              ),
-              trailing: _busy == 'wipe'
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.chevron_right),
-              onTap: _isBusy ? null : _wipeAll,
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Center(
             child: Text(
-              'Credit Card Manager · local-only build',
+              'Encrypted on this device. No cloud sync or analytics.',
               style: Theme.of(context).textTheme.labelSmall,
+              textAlign: TextAlign.center,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDataOptions() async {
+    await AppBottomSheet.show<void>(
+      context: context,
+      title: 'Data & backup',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('Create encrypted backup'),
+            subtitle: const Text('Argon2id + AES-256-GCM. Tokens excluded.'),
+            onTap: () {
+              Navigator.pop(context);
+              _createBackup();
+            },
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.restore_outlined),
+            title: const Text('Restore from backup'),
+            subtitle: const Text('Replaces local data. Gmail must reconnect.'),
+            onTap: () {
+              Navigator.pop(context);
+              _restoreBackup();
+            },
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.ios_share_outlined),
+            title: const Text('Export transactions as CSV'),
+            subtitle: const Text('Last four card digits only.'),
+            onTap: () {
+              Navigator.pop(context);
+              _exportCsv();
+            },
+          ),
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              'Delete all local data',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            subtitle: const Text('Cannot be undone. No remote copy exists.'),
+            onTap: () {
+              Navigator.pop(context);
+              _wipeAll();
+            },
           ),
         ],
       ),
@@ -232,13 +173,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Gmail is disabled in this build.'),
+            const Text('Gmail is not configured in this build.'),
             const SizedBox(height: 6),
             const Text(
-              'On Android, Gmail uses Google Play services and needs an Android '
-              'OAuth client for this package and signing certificate. On iOS, '
-              'provide GMAIL_CLIENT_ID and GMAIL_REDIRECT_URI at build time. '
-              'No client secret or token is stored in the database.',
+              'Add an Android OAuth client for this package and signing '
+              'certificate, then rebuild. Gmail access is read-only.',
             ),
             const SizedBox(height: 8),
             TextButton.icon(
@@ -260,8 +199,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Connected statements are never uploaded. Gmail access is '
-                    'read-only and is limited to statement messages.',
+                    'Connect Gmail to fetch credit-card statements only. '
+                    'Debit-card, bank-account, UPI, ATM, and wallet emails are '
+                    'excluded.',
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -295,30 +235,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.alternate_email),
-                    title: Text(account.emailAddress),
-                    subtitle: Text(
-                      [
-                        account.status,
-                        if (account.lastSuccessfulSync != null)
-                          'Last sync ${formatDateTime(account.lastSuccessfulSync)}',
-                      ].join(' · '),
-                    ),
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 20,
+                        child: Icon(Icons.alternate_email),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Connected Gmail',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              account.emailAddress,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    [
+                      'Credit-card statements only',
+                      if (account.lastSuccessfulSync != null)
+                        'Last sync ${formatDateTime(account.lastSuccessfulSync)}',
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   checkpoint.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, _) => const SizedBox.shrink(),
                     data: (value) => value == null
                         ? const SizedBox.shrink()
-                        : Text(
-                            'Checkpoint: ${value.status}'
-                            '${value.errorCode == null ? '' : ' · ${value.errorCode}'}',
-                            style: Theme.of(context).textTheme.bodySmall,
+                        : Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Checkpoint: ${value.status}'
+                              '${value.errorCode == null ? '' : ' · ${value.errorCode}'}',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
                           ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -334,9 +300,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 ),
                               )
                             : const Icon(Icons.sync),
-                        label: const Text('Sync now'),
+                        label: const Text('Fetch card emails'),
                       ),
                       OutlinedButton.icon(
+                        onPressed: _isBusy
+                            ? null
+                            : () => context.push(AppRoutes.statements),
+                        icon: const Icon(Icons.menu_book_outlined),
+                        label: const Text('Read statements'),
+                      ),
+                      TextButton.icon(
                         onPressed: _isBusy ? null : _disconnectGmail,
                         icon: const Icon(Icons.link_off),
                         label: const Text('Disconnect'),
@@ -370,16 +343,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.sms_outlined),
-            title: const Text('Android SMS import'),
+            title: const Text('Android SMS alerts'),
             subtitle: permission.when(
               loading: () => const Text('Checking permission…'),
               error: (_, _) => const Text('Permission status unavailable.'),
               data: (granted) => Text(
                 granted
-                    ? 'Permission granted. Only credit-card transaction alerts '
-                          'are parsed; debit-card, bank-account, UPI, ATM, and '
-                          'wallet messages are skipped. Raw inbox contents are '
-                          'not uploaded.'
+                    ? 'Only credit-card transaction alerts are parsed. '
+                          'Debit-card, bank-account, UPI, ATM, and wallet '
+                          'messages are skipped. Nothing is uploaded.'
                     : 'Permission is required before any message can be read.',
               ),
             ),
@@ -402,7 +374,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.download_outlined),
-                label: const Text('Import recent SMS'),
+                label: const Text('Fetch card SMS'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _isBusy
+                    ? null
+                    : () => context.push(AppRoutes.transactions),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Read transactions'),
               ),
               OutlinedButton.icon(
                 onPressed: _isBusy ? null : _clearSms,
@@ -485,17 +464,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _syncGmail() async {
+    if (!await _ensureCards()) return;
     await _run('gmail-sync', () async {
       final service = await ref.read(gmailSyncServiceProvider.future);
       final result = await service.sync();
       _invalidateAfterImport();
       _showMessage(
-        'Examined ${result.messagesExamined} messages · '
+        'Examined ${result.messagesExamined} emails · '
+        '${result.ignored} non-card ignored · '
         '${result.statementsProcessed} statements · '
         '${result.requiresReview} need review'
         '${result.errors == 0 ? '' : ' · ${result.errors} errors'}.',
       );
     });
+  }
+
+  /// Blocks inbox/email access until at least one active card exists.
+  Future<bool> _ensureCards() async {
+    try {
+      final cards = await ref.read(creditCardsProvider.future);
+      if (cards.any((card) => card.isActive)) return true;
+    } catch (_) {
+      // Fall through to the actionable error below.
+    }
+    _showMessage('Add a credit card before fetching messages.');
+    return false;
   }
 
   Future<void> _disconnectGmail() async {
@@ -544,6 +537,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _importSms() async {
+    if (!await _ensureCards()) return;
     await _run('sms', () async {
       final service = await ref.read(smsImportServiceProvider.future);
       if (!await service.hasPermission()) {
@@ -871,55 +865,16 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
       child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleSmall
-            ?.copyWith(color: Theme.of(context).colorScheme.primary),
-      ),
-    );
-  }
-}
-
-class _ImportJobTile extends StatelessWidget {
-  const _ImportJobTile({required this.job});
-
-  final ImportJob job;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(job.sourceType, style: theme.textTheme.titleSmall),
-              ),
-              Text(job.status.name, style: theme.textTheme.labelSmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${formatDateTime(job.startedAt)} · '
-            '${job.recordsImported} imported · '
-            '${job.recordsSkipped} skipped · '
-            '${job.recordsRequiringReview} review',
-            style: theme.textTheme.bodySmall,
-          ),
-          if (job.errorCode != null)
-            Text(
-              job.errorCode!,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-        ],
+        text.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }

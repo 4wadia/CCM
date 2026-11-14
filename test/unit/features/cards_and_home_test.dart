@@ -1,13 +1,14 @@
 import 'package:credit_card_manager/app/providers.dart';
 import 'package:credit_card_manager/domain/entities/bank.dart';
 import 'package:credit_card_manager/domain/entities/credit_card.dart';
+import 'package:credit_card_manager/domain/entities/email_account.dart';
 import 'package:credit_card_manager/features/cards/presentation/pages/cards_page.dart';
 import 'package:credit_card_manager/features/cards/presentation/providers/card_providers.dart';
 import 'package:credit_card_manager/features/home/presentation/pages/home_page.dart';
 import 'package:credit_card_manager/shared/theme/app_theme.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../fakes/fake_repositories.dart';
 import '../../fakes/test_overrides.dart';
@@ -47,12 +48,26 @@ void main() {
     updatedAt: now,
   );
 
-  Widget home(List<CreditCard> cards) {
+  Widget home(List<CreditCard> cards, {EmailAccount? emailAccount}) {
     return testProviderScope(
       cards: cards,
+      emailAccount: emailAccount,
       child: MaterialApp(theme: AppTheme.light(), home: const HomePage()),
     );
   }
+
+  EmailAccount connectedEmail() => EmailAccount(
+    id: 'email_1',
+    provider: 'gmail',
+    emailAddress: 'reader@example.com',
+    secureTokenReference: 'secure_ref',
+    status: 'connected',
+    syncEnabled: true,
+    connectedAt: now,
+    lastSuccessfulSync: now,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   Widget cardsPage({
     required List<CreditCard> cards,
@@ -124,6 +139,10 @@ void main() {
     expect(find.text('Credit limits'), findsOneWidget);
     expect(find.text('Utilisation 14.3%'), findsOneWidget);
     expect(find.text('Utilisation 10%'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('more than one currency'),
+      300,
+    );
     expect(find.textContaining('more than one currency'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const Key('card-summary-usd1')),
@@ -151,6 +170,24 @@ void main() {
       300,
     );
     expect(find.text('—'), findsOneWidget);
+  });
+
+  testWidgets('home shows the connected Gmail address without Account', (
+    tester,
+  ) async {
+    final account = connectedEmail();
+    await tester.pumpWidget(
+      home([
+        card(id: 'usd1', currencyCode: 'USD', limitMinor: 100000),
+      ], emailAccount: account),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Connected Gmail'), findsOneWidget);
+    expect(find.text(account.emailAddress), findsOneWidget);
+    expect(find.text('Read statements'), findsOneWidget);
+    expect(find.text('Credit-card statements only'), findsNothing);
+    expect(find.textContaining('Credit-card statements only'), findsOneWidget);
   });
 
   testWidgets('cards page exposes only last-four identity fields', (

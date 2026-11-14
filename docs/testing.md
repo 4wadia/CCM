@@ -75,8 +75,12 @@
 ### Gmail and email classification
 
 - Classifier tests cover PDF + statement subject + known issuer + card suffix, PDF-only
-  candidates, unrelated email, and non-PDF attachments.
-- Gmail sync is implemented with fakeable client/token interfaces, but real OAuth and
+  candidates, unrelated email, non-PDF attachments, debit/account rejection, and
+  card-only issuers.
+- Gmail query-builder tests assert that searches require credit-card statement subjects
+  and exclude debit/account/savings/UPI/ATM/wallet terms.
+- Gmail sync is implemented with fakeable client/token interfaces; a no-card test asserts
+  that no account or Gmail client call happens before a card exists. Real OAuth and
   network sync are not exercised because no Google Cloud project is configured.
 
 ### PDF statements
@@ -123,8 +127,8 @@
   review queue, assign/resolve/dismiss controls.
 - Statements: statement list, totals, review status, detail sheet, extracted rows.
 - Rewards: cashback totals, reward accounts, declarative rules, recent entries.
-- Settings: local-only messaging, Gmail-disabled state, Android SMS controls, backup
-  explanation, import history, and footer.
+- Account: compact connected-email display, Gmail-disabled state, Android SMS controls,
+  backup sheet, no-card import guard, and footer.
 - Card detail: metrics, recent transactions, reward points, billing days, and navigation.
 
 ## Commands

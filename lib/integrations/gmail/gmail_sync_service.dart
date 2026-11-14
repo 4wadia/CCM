@@ -5,11 +5,13 @@ import '../../core/errors/app_failure.dart';
 import '../../domain/entities/email_account.dart';
 import '../../domain/entities/import_job.dart';
 import '../../domain/entities/transaction.dart';
+import '../../domain/repositories/credit_card_repository.dart';
 import '../../domain/repositories/email_account_repository.dart';
 import '../../domain/repositories/import_job_repository.dart';
 import '../../domain/services/ids.dart';
 import '../pdf/password_strategy.dart';
 import '../pdf/statement_import_service.dart';
+import 'email_classifier.dart';
 import 'gmail_client.dart';
 import 'oauth_service.dart';
 import 'secure_token_store.dart';
@@ -20,12 +22,16 @@ class GmailSyncResult {
     required this.statementsProcessed,
     required this.requiresReview,
     required this.errors,
+    this.ignored = 0,
   });
 
   final int messagesExamined;
   final int statementsProcessed;
   final int requiresReview;
   final int errors;
+
+  /// Messages returned by Gmail that were not credit-card messages.
+  final int ignored;
 }
 
 /// Orchestrates one local Gmail sync. The checkpoint is advanced only after the
@@ -39,13 +45,15 @@ class GmailSyncService {
     required ImportJobRepository jobs,
     required ReviewRepository reviews,
     required StatementImportService statements,
+    required CreditCardRepository cards,
   }) : _oauth = oauth,
        _tokens = tokens,
        _client = client,
        _accounts = accounts,
        _jobs = jobs,
        _reviews = reviews,
-       _statements = statements;
+       _statements = statements,
+       _cards = cards;
 
   final OAuthService _oauth;
   final SecureTokenStore _tokens;
@@ -54,6 +62,7 @@ class GmailSyncService {
   final ImportJobRepository _jobs;
   final ReviewRepository _reviews;
   final StatementImportService _statements;
+  final CreditCardRepository _cards;
 
   bool get isConfigured => _oauth.isConfigured;
 
@@ -130,6 +139,15 @@ class GmailSyncService {
             'GMAIL_REDIRECT_URI at build time.',
       );
     }
+    final cards = await _cards.getAll();
+    if (cards.isEmpty) {
+      throw const AppFailure(
+        code: 'CCM-GMAIL-016',
+        message:
+            'Add a credit card before fetching card emails. Nothing was '
+            'downloaded.',
+      );
+    }
     final account = await _accounts.firstConnected();
     if (account == null) {
       throw const AppFailure(
@@ -199,6 +217,7 @@ class GmailSyncService {
     var processed = 0;
     var review = 0;
     var errors = 0;
+    var ignored = 0;
     var latest = since;
     try {
       final candidates = await _client.searchMessages(
@@ -210,6 +229,10 @@ class GmailSyncService {
       for (final candidate in candidates) {
         if (latest == null || candidate.receivedAt.isAfter(latest)) {
           latest = candidate.receivedAt;
+        }
+        if (!EmailClassifier.isCreditCardMessage(candidate)) {
+          ignored++;
+          continue;
         }
         if (candidate.confidence < 0.55) {
           review++;
@@ -355,7 +378,7 @@ class GmailSyncService {
           progress: 100,
           recordsFound: messages,
           recordsImported: processed,
-          recordsSkipped: 0,
+          recordsSkipped: ignored,
           recordsRequiringReview: review,
           errorCode: errors > 0 ? 'partial_failure' : null,
         ),
@@ -365,6 +388,7 @@ class GmailSyncService {
         statementsProcessed: processed,
         requiresReview: review,
         errors: errors,
+        ignored: ignored,
       );
     } catch (error) {
       await _accounts.saveCheckpoint(
@@ -390,7 +414,7 @@ class GmailSyncService {
           progress: 100,
           recordsFound: messages,
           recordsImported: processed,
-          recordsSkipped: 0,
+          recordsSkipped: ignored,
           recordsRequiringReview: review,
           errorCode: 'gmail_sync_failed',
         ),

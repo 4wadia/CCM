@@ -96,6 +96,11 @@ available for runtime permission/keystore tests.
   accounts that existed before the restore.
 - Gmail message bodies are not stored. Candidate metadata keeps sender domain, timestamp,
   and reason; raw email content is not logged.
+- Gmail search is restricted to credit-card statement PDFs. Debit-card, bank-account,
+  savings, UPI, ATM, and wallet subjects are excluded before download, and a classifier
+  skips any remaining non-card candidates without creating review items.
+- Gmail sync refuses to start until at least one active card exists, so no inbox data is
+  fetched for an empty portfolio.
 
 ### Android SMS
 
@@ -105,6 +110,8 @@ available for runtime permission/keystore tests.
   messages become review items.
 - Review metadata for unparsed SMS stores sender and timestamp, not the message body.
 - Raw SMS bodies are never uploaded or logged.
+- SMS import requires an active card and permission before the inbox query runs; the
+  no-card guard is tested with a fake platform that records reads.
 
 ### PDF statement processing
 

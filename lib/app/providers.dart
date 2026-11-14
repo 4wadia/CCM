@@ -236,6 +236,7 @@ final gmailSyncServiceProvider = FutureProvider<GmailSyncService>((ref) async {
     jobs: await ref.watch(importJobRepositoryProvider.future),
     reviews: await ref.watch(reviewRepositoryProvider.future),
     statements: await ref.watch(statementImportServiceProvider.future),
+    cards: await ref.watch(creditCardRepositoryProvider.future),
   );
 });
 

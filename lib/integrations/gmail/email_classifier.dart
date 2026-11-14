@@ -26,6 +26,53 @@ abstract final class EmailClassifier {
     'account statement',
   ];
 
+  static const List<String> _creditCardTerms = <String>[
+    'credit card',
+    'creditcard',
+    'card statement',
+    'card bill',
+    'card e-statement',
+    'credit card statement',
+    'credit card bill',
+  ];
+
+  static const List<String> _nonCreditCardTerms = <String>[
+    'debit card',
+    'account statement',
+    'bank statement',
+    'savings account',
+    'current account',
+    'fixed deposit',
+    'recurring deposit',
+    'upi',
+    'atm',
+    'wallet',
+  ];
+
+  /// Issuers that only send card statements. Other banks may send both card
+  /// and bank-account statements, so they still need a credit-card subject.
+  static const Set<String> _cardOnlyIssuers = <String>{
+    'amex',
+    'americanexpress',
+  };
+
+  /// Returns whether a message is specifically a credit-card message.
+  ///
+  /// This is deliberately stricter than [classify]: a message that only looks
+  /// like a generic bank statement is skipped instead of entering the review
+  /// queue.
+  static bool isCreditCardMessage(EmailCandidate candidate) {
+    final text = '${candidate.sender} ${candidate.subject}'.toLowerCase();
+    if (_nonCreditCardTerms.any(text.contains)) return false;
+    if (_creditCardTerms.any(text.contains)) return true;
+    final cardOnlyIssuer = _cardOnlyIssuers.any(text.contains);
+    if (cardOnlyIssuer &&
+        (text.contains('statement') || text.contains('bill'))) {
+      return true;
+    }
+    return false;
+  }
+
   static EmailCandidate classify({
     required String messageId,
     required String sender,

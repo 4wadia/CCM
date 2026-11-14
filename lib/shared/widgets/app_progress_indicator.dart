@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A horizontal progress bar with rounded corners, an animated foreground,
 /// and optional percentage label.

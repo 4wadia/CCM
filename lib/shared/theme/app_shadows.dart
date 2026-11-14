@@ -2,29 +2,46 @@ import 'package:flutter/painting.dart';
 
 /// Design tokens for elevation shadows.
 ///
-/// Each method accepts [isDark] to adapt shadow intensity for the current
-/// brightness mode.
+/// Subtle, sophisticated shadows for a layered interface.
 final class AppShadows {
   const AppShadows._();
 
-  /// Small shadow: offset(0,1), blur 3.
+  /// Subtle shadow for cards.
   static BoxShadow sm({required bool isDark}) => BoxShadow(
     offset: const Offset(0, 1),
     blurRadius: 3,
-    color: const Color(0xFF000000).withValues(alpha: isDark ? 0.3 : 0.08),
+    spreadRadius: 0,
+    color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.2 : 0.06),
   );
 
-  /// Medium shadow: offset(0,2), blur 8.
+  /// Medium shadow for elevated elements.
   static BoxShadow md({required bool isDark}) => BoxShadow(
-    offset: const Offset(0, 2),
-    blurRadius: 8,
-    color: const Color(0xFF000000).withValues(alpha: isDark ? 0.4 : 0.12),
+    offset: const Offset(0, 4),
+    blurRadius: 12,
+    spreadRadius: -2,
+    color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.3 : 0.08),
   );
 
-  /// Large shadow: offset(0,4), blur 16.
+  /// Large shadow for modals and popovers.
   static BoxShadow lg({required bool isDark}) => BoxShadow(
-    offset: const Offset(0, 4),
-    blurRadius: 16,
-    color: const Color(0xFF000000).withValues(alpha: isDark ? 0.5 : 0.16),
+    offset: const Offset(0, 8),
+    blurRadius: 24,
+    spreadRadius: -4,
+    color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.4 : 0.12),
   );
+
+  /// Card face shadow — subtle lift.
+  static List<BoxShadow> cardFace({required bool isDark}) => [
+    BoxShadow(
+      offset: const Offset(0, 2),
+      blurRadius: 8,
+      color: const Color(0xFF000000).withValues(alpha: isDark ? 0.3 : 0.08),
+    ),
+    BoxShadow(
+      offset: const Offset(0, 8),
+      blurRadius: 24,
+      spreadRadius: -4,
+      color: const Color(0xFF000000).withValues(alpha: isDark ? 0.2 : 0.06),
+    ),
+  ];
 }

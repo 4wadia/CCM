@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../domain/entities/cashback.dart';
@@ -525,15 +525,33 @@ class _RewardAccountCard extends StatelessWidget {
     final theme = Theme.of(context);
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const CircleAvatar(child: Icon(Icons.stars_outlined, size: 20)),
-          const SizedBox(width: 12),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.stars_rounded,
+              size: 22,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(account.programmeName, style: theme.textTheme.titleSmall),
+                Text(
+                  account.programmeName,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 Text(
                   card == null
                       ? account.cardId
@@ -541,12 +559,17 @@ class _RewardAccountCard extends StatelessWidget {
                   style: theme.textTheme.bodySmall,
                 ),
                 if (account.estimatedValueMinor != null &&
-                    account.currencyCode != null)
+                    account.currencyCode != null) ...[
+                  const SizedBox(height: 2),
                   Text(
                     'Estimated value: '
                     '${MoneyAmount.formatMinorUnits(account.estimatedValueMinor!, account.currencyCode!)}',
-                    style: theme.textTheme.bodySmall,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                ],
               ],
             ),
           ),
@@ -556,7 +579,7 @@ class _RewardAccountCard extends StatelessWidget {
               Text(
                 '${account.currentPoints}',
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               Text('points', style: theme.textTheme.labelSmall),

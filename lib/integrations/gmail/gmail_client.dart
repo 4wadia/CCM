@@ -257,6 +257,12 @@ class GoogleGmailClient implements GmailClient {
 }
 
 abstract final class GmailQueryBuilder {
+  /// Restricts the search to credit-card statement emails.
+  ///
+  /// Gmail search is intentionally narrow: a PDF attachment is required and
+  /// the subject must identify a credit card statement or bill. Debit-card,
+  /// bank-account, savings, UPI, ATM, and wallet statements are excluded before
+  /// the messages reach the classifier.
   static String build({DateTime? after, int lookbackDays = 60}) {
     final cutoff =
         after ?? DateTime.now().subtract(Duration(days: lookbackDays));
@@ -265,8 +271,13 @@ abstract final class GmailQueryBuilder {
         '${cutoff.month.toString().padLeft(2, '0')}/'
         '${cutoff.day.toString().padLeft(2, '0')}';
     return 'has:attachment filename:pdf '
-        '(subject:(statement OR bill OR "credit card") OR '
-        'from:(hdfcbank OR icicibank OR sbi OR axisbank OR kotak OR amex OR hsbc OR citibank)) '
+        '(subject:"credit card" OR subject:"card statement" '
+        'OR subject:"card bill" OR subject:"credit card statement" '
+        'OR subject:"credit card bill" OR subject:"card e-statement" '
+        'OR (from:(amex OR americanexpress) '
+        'subject:(statement OR bill))) '
+        '-subject:(debit OR "account statement" OR "bank statement" '
+        'OR savings OR UPI OR ATM OR wallet) '
         'after:$date';
   }
 }

@@ -1,5 +1,5 @@
 import 'package:credit_card_manager/domain/services/money_amount.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Renders a formatted currency amount using [MoneyAmount.formatMinorUnits].
 ///

@@ -1,6 +1,8 @@
 import 'package:flutter/painting.dart';
 
-/// Design tokens for border radii used throughout the application.
+/// Design tokens for border radii.
+///
+/// Generous, modern radii inspired by Apple and Linear design systems.
 final class AppRadius {
   const AppRadius._();
 
@@ -20,11 +22,14 @@ final class AppRadius {
   /// 16 logical pixels.
   static const double lg = 16;
 
-  /// 18 logical pixels.
-  static const double xl = 18;
+  /// 20 logical pixels.
+  static const double xl = 20;
 
   /// 24 logical pixels.
   static const double xxl = 24;
+
+  /// 28 logical pixels.
+  static const double xxxl = 28;
 
   /// Fully circular: 999.
   static const double full = 999;
@@ -33,8 +38,11 @@ final class AppRadius {
   // BorderRadius helpers
   // ---------------------------------------------------------------------------
 
-  /// Card border radius: 12.
-  static const BorderRadius card = BorderRadius.all(Radius.circular(md));
+  /// Card border radius: 20.
+  static const BorderRadius card = BorderRadius.all(Radius.circular(xl));
+
+  /// Credit card face radius: 16.
+  static const BorderRadius cardFace = BorderRadius.all(Radius.circular(lg));
 
   /// Button border radius: 12.
   static const BorderRadius button = BorderRadius.all(Radius.circular(md));
@@ -42,15 +50,17 @@ final class AppRadius {
   /// Input border radius: 12.
   static const BorderRadius input = BorderRadius.all(Radius.circular(md));
 
-  /// Chip border radius: 8.
+  /// Chip / badge border radius: 8.
   static const BorderRadius chip = BorderRadius.all(Radius.circular(sm));
 
-  /// Dialog border radius: 16.
-  static const BorderRadius dialog = BorderRadius.all(Radius.circular(lg));
+  /// Dialog border radius: 24.
+  static const BorderRadius dialog = BorderRadius.all(Radius.circular(xxl));
 
-  /// Bottom sheet border radius: 18.
-  static const BorderRadius bottomSheet = BorderRadius.all(Radius.circular(xl));
+  /// Bottom sheet top corners: 28.
+  static const BorderRadius bottomSheet = BorderRadius.all(
+    Radius.circular(xxxl),
+  );
 
-  /// Fully circular border radius.
+  /// Fully circular.
   static const BorderRadius circular = BorderRadius.all(Radius.circular(full));
 }

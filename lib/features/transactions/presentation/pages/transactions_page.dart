@@ -2,13 +2,16 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../../domain/entities/credit_card.dart';
 import '../../../../domain/entities/transaction.dart';
 import '../../../../domain/services/csv_exporter.dart';
 import '../../../../shared/formatting/date_format.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_radius.dart';
+import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_loading_state.dart';
@@ -84,23 +87,74 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
             data: (value) => value == 0
                 ? const SizedBox.shrink()
                 : Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                    child: Card(
-                      color: Theme.of(context).colorScheme.errorContainer,
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.pageHorizontal,
+                      8,
+                      AppSpacing.pageHorizontal,
+                      4,
+                    ),
+                    child: Material(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkWarning.withValues(alpha: 0.12)
+                          : const Color(0xFFFEF3C7),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkWarning.withValues(alpha: 0.3)
+                              : const Color(0xFFFDE68A),
+                          width: 0.5,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
                       child: ListTile(
-                        leading: Icon(
-                          Icons.rule,
-                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkWarning.withValues(alpha: 0.2)
+                                : const Color(0xFFFDE68A),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.rule,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkWarning
+                                : const Color(0xFF92400E),
+                            size: 20,
+                          ),
                         ),
                         title: Text(
                           '$value ${value == 1 ? 'item needs' : 'items need'} review',
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onErrorContainer,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkWarning
+                                : const Color(0xFF92400E),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
                         ),
-                        trailing: const Icon(Icons.chevron_right),
+                        subtitle: Text(
+                          'Ambiguous imports are waiting for a decision.',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkWarning.withValues(alpha: 0.8)
+                                : const Color(0xFFB45309),
+                            fontSize: 12,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkWarning
+                              : const Color(0xFF92400E),
+                          size: 20,
+                        ),
                         onTap: _openReview,
                       ),
                     ),
@@ -148,12 +202,17 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                         padding: const EdgeInsets.only(bottom: 24),
                         itemCount: items.length + 1,
                         separatorBuilder: (context, index) =>
-                            const Divider(height: 1, indent: 72),
+                            const Divider(height: 1, indent: 70),
                         itemBuilder: (context, index) {
                           if (index == 0) {
                             final total = count.asData?.value ?? items.length;
                             return Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.pageHorizontal,
+                                12,
+                                AppSpacing.pageHorizontal,
+                                8,
+                              ),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -162,15 +221,36 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                       '${total == 1 ? 'transaction' : 'transactions'}',
                                       style: Theme.of(context)
                                           .textTheme
-                                          .titleMedium,
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                   if (filter.hasFilters)
-                                    Text(
-                                      'Filtered',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer,
+                                        borderRadius: AppRadius.chip,
+                                      ),
+                                      child: Text(
+                                        'Filtered',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
                                     ),
                                 ],
                               ),

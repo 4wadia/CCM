@@ -96,6 +96,15 @@ class SmsImportService {
         message: 'SMS import is available only on Android.',
       );
     }
+    final cards = await _cards.getAll(includeArchived: false);
+    if (cards.isEmpty) {
+      throw const AppFailure(
+        code: 'CCM-SMS-006',
+        message:
+            'Add a credit card before fetching card SMS alerts. No messages '
+            'were read.',
+      );
+    }
     if (!await _platform.hasPermission()) {
       throw const AppFailure(
         code: 'CCM-SMS-005',
@@ -116,7 +125,6 @@ class SmsImportService {
       limit: limit,
     );
     final banks = await _banks.getAll();
-    final cards = await _cards.getAll(includeArchived: false);
     final knownLastFour = cards.map((card) => card.lastFour).toSet();
     final parsed = <ParsedTransaction>[];
     var lastDate = checkpoint;

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A design-system modal bottom sheet with a drag handle, title, scrollable
 /// content, and optional action buttons.

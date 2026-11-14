@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A design-system list tile with leading, title, subtitle, and trailing
 /// sections.

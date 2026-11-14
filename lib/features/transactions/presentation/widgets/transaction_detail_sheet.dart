@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../domain/entities/credit_card.dart';
 import '../../../../domain/entities/transaction.dart';
 import '../../../../shared/formatting/date_format.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_radius.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/currency_text.dart';
 import '../../../cards/presentation/providers/card_providers.dart';
@@ -33,6 +36,7 @@ class _TransactionDetailSheetState
     final categories = ref.watch(transactionCategoriesProvider);
     final sources = ref.watch(transactionSourcesProvider(tx.id));
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -49,7 +53,9 @@ class _TransactionDetailSheetState
               Expanded(
                 child: Text(
                   tx.displayMerchant,
-                  style: theme.textTheme.titleLarge,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               IconButton(
@@ -58,17 +64,20 @@ class _TransactionDetailSheetState
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           CurrencyText(
             amountMinor: tx.amountMinor,
             currencyCode: tx.currencyCode,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: tx.isCredit ? theme.colorScheme.tertiary : null,
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: tx.isCredit
+                  ? (isDark ? AppColors.darkSuccess : AppColors.success)
+                  : null,
             ),
           ),
           const SizedBox(height: 16),
           AppCard(
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
                 _row('Date', formatShortDate(tx.transactionDate)),
@@ -102,52 +111,69 @@ class _TransactionDetailSheetState
             ),
           ),
           if (tx.needsReview) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Card(
               color: theme.colorScheme.errorContainer,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(
-                  'This transaction is in the review queue. Correct the card or '
-                  'merchant, then resolve it.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.rule,
+                      color: theme.colorScheme.onErrorContainer,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'This transaction is in the review queue. Correct the card or '
+                        'merchant, then resolve it.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
                 onPressed: _busy ? null : _edit,
-                icon: const Icon(Icons.edit_outlined),
+                icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Edit'),
               ),
               OutlinedButton.icon(
                 onPressed: _busy ? null : _assignCard,
-                icon: const Icon(Icons.credit_card),
+                icon: const Icon(Icons.credit_card, size: 18),
                 label: const Text('Assign card'),
               ),
               if (tx.needsReview)
                 FilledButton.icon(
                   onPressed: _busy ? null : () => _setStatus(posted: true),
-                  icon: const Icon(Icons.check),
+                  icon: const Icon(Icons.check, size: 18),
                   label: const Text('Mark posted'),
                 )
               else
                 TextButton.icon(
                   onPressed: _busy ? null : () => _setStatus(posted: false),
-                  icon: const Icon(Icons.flag_outlined),
+                  icon: const Icon(Icons.flag_outlined, size: 18),
                   label: const Text('Needs review'),
                 ),
             ],
           ),
           const SizedBox(height: 20),
-          Text('Sources', style: theme.textTheme.titleMedium),
+          Text(
+            'Sources',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
           sources.when(
             loading: () => const LinearProgressIndicator(),
@@ -159,24 +185,54 @@ class _TransactionDetailSheetState
                       for (final source in items)
                         AppCard(
                           margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(source.sourceType.label),
-                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      source.sourceType.label,
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: AppRadius.chip,
+                                    ),
+                                    child: Text(
+                                      source.matchStatus.name,
+                                      style: theme.textTheme.labelSmall,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
                               Text(
                                 '${source.matchStatus.name} · '
                                 '${formatShortDate(source.createdAt)}',
                                 style: theme.textTheme.bodySmall,
                               ),
-                              if (source.originalDescription.isNotEmpty)
+                              if (source.originalDescription.isNotEmpty) ...[
+                                const SizedBox(height: 4),
                                 Text(
                                   source.originalDescription,
                                   style: theme.textTheme.bodySmall,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                              ],
                             ],
                           ),
                         ),
@@ -191,18 +247,35 @@ class _TransactionDetailSheetState
   Widget _row(String label, String value) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 86,
-            child: Text(label, style: theme.textTheme.bodySmall),
+            width: 90,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String cardLabel(CreditCard? card) {
+    if (card == null) return 'Unassigned';
+    return '${card.displayName} •••• ${card.lastFour}';
   }
 
   Future<void> _edit() async {
@@ -268,6 +341,8 @@ class _TransactionDetailSheetState
       }
       _refresh();
       if (mounted) Navigator.pop(context);
+    } on AppFailure catch (error) {
+      _showError(error.message);
     } catch (_) {
       _showError('The transaction status could not be changed.');
     } finally {

@@ -1,7 +1,7 @@
 # Architecture
 
 **Status:** M3–M10 are implemented and host-verified. Cards, Home, Transactions,
-Statements, Rewards, and Settings consume repositories through Riverpod. Android SMS,
+Statements, Rewards, and Account consume repositories through Riverpod. Android SMS,
 Gmail statement sync, encrypted PDF import, encrypted backup/restore, and local wipe are
 wired. iOS, physical-device, real-OAuth, and verified bank-fixture validation remain
 blocked by the environment (see `status.md`).
@@ -52,7 +52,7 @@ feature providers. Empty layers are not created for symmetry.
 | Transactions | Filtered ledger, add/edit, detail, card assignment, review queue, CSV export |
 | Statements | Encrypted PDF import, statement list/detail, extracted transactions, review indicators |
 | Rewards | Cashback summary/entries, reward accounts, point adjustments, declarative cashback rules |
-| Settings | Gmail connect/sync/disconnect, Android SMS import, PDF import, CSV export, encrypted backup/restore, import history, full local wipe |
+| Account | Connected Gmail address, credit-card-only Gmail sync, Android SMS import, PDF import, CSV export, encrypted backup/restore, full local wipe |
 
 ## Application bootstrap
 
@@ -76,10 +76,10 @@ Five top-level destinations from the specification §17.1:
 2. Cards
 3. Transactions
 4. Rewards
-5. Settings
+5. Account
 
 `StatefulShellRoute.indexedStack` preserves per-tab state. `/statements` is a top-level
-route reachable from Settings and card detail, so statement review does not replace the
+route reachable from Account and card detail, so statement review does not replace the
 Transactions tab.
 
 ## State management

@@ -31,7 +31,7 @@ on Android, so the old `flutter_appauth` custom-scheme flow is not used on that 
 3. Configure the OAuth consent screen and add test users.
 4. Create an OAuth client ID of type **Android** with package `app.creditcardmanager` and
    the signing certificate SHA-1.
-5. Install the APK and use **Settings → Gmail statements → Connect Gmail**.
+5. Install the APK and use **Account → Connected Gmail → Connect Gmail**.
 
 The in-app **Setup help** dialog shows the debug SHA-1 for the published debug-signed APK.
 If the signing key changes, create a new Android OAuth client for the new SHA-1.

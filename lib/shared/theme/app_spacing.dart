@@ -1,6 +1,8 @@
 import 'package:flutter/painting.dart';
 
-/// Design tokens for consistent spacing throughout the application.
+/// Design tokens for consistent spacing.
+///
+/// Generous whitespace creates a premium, breathable layout.
 final class AppSpacing {
   const AppSpacing._();
 
@@ -36,12 +38,15 @@ final class AppSpacing {
   static const double xxxxl = 48;
 
   // ---------------------------------------------------------------------------
-  // EdgeInsets helpers
+  // Page padding — generous horizontal padding for premium feel
   // ---------------------------------------------------------------------------
 
-  /// Standard page padding: horizontal 16, vertical 8.
+  /// Standard horizontal page padding.
+  static const double pageHorizontal = 20;
+
+  /// Standard page padding.
   static const EdgeInsets pagePadding = EdgeInsets.symmetric(
-    horizontal: lg,
+    horizontal: pageHorizontal,
     vertical: sm,
   );
 

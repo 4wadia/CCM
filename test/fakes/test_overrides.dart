@@ -2,6 +2,7 @@ import 'package:credit_card_manager/domain/entities/bank.dart';
 import 'package:credit_card_manager/domain/entities/card_portfolio_summary.dart';
 import 'package:credit_card_manager/domain/entities/cashback.dart';
 import 'package:credit_card_manager/domain/entities/credit_card.dart';
+import 'package:credit_card_manager/domain/entities/email_account.dart';
 import 'package:credit_card_manager/domain/entities/import_job.dart';
 import 'package:credit_card_manager/domain/entities/reward.dart';
 import 'package:credit_card_manager/domain/entities/statement.dart';
@@ -14,8 +15,8 @@ import 'package:credit_card_manager/features/rewards/presentation/providers/rewa
 import 'package:credit_card_manager/features/settings/presentation/providers/settings_providers.dart';
 import 'package:credit_card_manager/features/statements/presentation/providers/statement_providers.dart';
 import 'package:credit_card_manager/features/transactions/presentation/providers/transaction_providers.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Provider scope that keeps widget tests off the encrypted database and
 /// platform channels.
@@ -38,6 +39,7 @@ ProviderScope testProviderScope({
   List<ReviewItem> reviewItems = const <ReviewItem>[],
   List<ImportJob> importJobs = const <ImportJob>[],
   int reviewCount = 0,
+  EmailAccount? emailAccount,
   bool gmailConfigured = false,
   bool smsSupported = false,
   bool smsPermission = false,
@@ -49,7 +51,7 @@ ProviderScope testProviderScope({
     recentTransactions: recent,
     cashbackByCurrency: const <String, int>{},
     rewardAccounts: rewardAccounts,
-    emailAccount: null,
+    emailAccount: emailAccount,
     reviewCount: reviewCount,
   );
   return ProviderScope(
@@ -85,7 +87,7 @@ ProviderScope testProviderScope({
             const <StatementTransaction>[],
       ),
       importJobsProvider.overrideWith((ref) async => importJobs),
-      gmailStatusProvider.overrideWith((ref) async => null),
+      gmailStatusProvider.overrideWith((ref) async => emailAccount),
       syncCheckpointProvider.overrideWith((ref) async => null),
       gmailConfiguredProvider.overrideWithValue(gmailConfigured),
       smsSupportedProvider.overrideWithValue(smsSupported),

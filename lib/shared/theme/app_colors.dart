@@ -1,8 +1,9 @@
 import 'dart:ui';
 
-/// Design tokens for all color values used across the application.
+/// Premium fintech design tokens.
 ///
-/// Defines both light and dark palettes plus semantic card-network colors.
+/// Inspired by Stripe, Revolut, and Linear — neutral base with a single
+/// accent, generous contrast, and restrained use of colour.
 final class AppColors {
   const AppColors._();
 
@@ -10,108 +11,114 @@ final class AppColors {
   // Light palette
   // ---------------------------------------------------------------------------
 
-  /// Off-white background.
-  static const Color background = Color(0xFFFAFAF8);
+  /// Pure white background for maximum breathing room.
+  static const Color background = Color(0xFFF8F9FA);
 
-  /// White surface.
+  /// Card / elevated surface.
   static const Color surface = Color(0xFFFFFFFF);
 
-  /// Slight warm gray surface variant.
-  static const Color surfaceVariant = Color(0xFFF5F5F3);
+  /// Secondary surface for inputs, chips.
+  static const Color surfaceVariant = Color(0xFFF1F3F5);
 
-  /// Muted emerald primary.
-  static const Color primary = Color(0xFF4A9E7E);
+  /// Tertiary surface for subtle grouping.
+  static const Color surfaceTertiary = Color(0xFFE9ECEF);
 
-  /// Light emerald tint container.
-  static const Color primaryContainer = Color(0xFFE0F2EC);
+  /// Deep blue-black for premium feel.
+  static const Color primary = Color(0xFF0A84FF);
 
-  /// White on-primary.
+  /// Lighter primary tint.
+  static const Color primaryContainer = Color(0xFFE8F3FF);
+
+  /// White on primary.
   static const Color onPrimary = Color(0xFFFFFFFF);
 
-  /// Near-black text.
-  static const Color textPrimary = Color(0xFF1A1A1A);
+  /// Near-black ink — richly dark without being pure black.
+  static const Color textPrimary = Color(0xFF0F172A);
 
-  /// Medium gray text.
-  static const Color textSecondary = Color(0xFF6B6B6B);
+  /// Medium slate for secondary text.
+  static const Color textSecondary = Color(0xFF64748B);
 
-  /// Light gray text.
-  static const Color textTertiary = Color(0xFF9E9E9E);
+  /// Light gray for tertiary labels.
+  static const Color textTertiary = Color(0xFF94A3B8);
 
-  /// Subtle border.
-  static const Color border = Color(0xFFE5E5E5);
+  /// Very subtle border for card outlines.
+  static const Color border = Color(0xFFE2E8F0);
 
-  /// Very subtle border.
-  static const Color borderLight = Color(0xFFF0F0F0);
+  /// Lighter border for inner dividers.
+  static const Color borderLight = Color(0xFFF1F5F9);
 
-  /// Divider.
-  static const Color divider = Color(0xFFEEEEEE);
+  /// Divider for list separators.
+  static const Color divider = Color(0xFFF1F5F9);
 
-  /// Error red.
-  static const Color error = Color(0xFFDC3545);
+  /// Semantic: error / high utilisation.
+  static const Color error = Color(0xFFEF4444);
 
-  /// Warning amber.
-  static const Color warning = Color(0xFFF5A623);
+  /// Semantic: warning / approaching limit.
+  static const Color warning = Color(0xFFF59E0B);
 
-  /// Success emerald (same as primary).
-  static const Color success = Color(0xFF4A9E7E);
+  /// Semantic: success / good standing.
+  static const Color success = Color(0xFF10B981);
 
-  /// Info blue.
-  static const Color info = Color(0xFF5B9BD5);
+  /// Semantic: info / neutral emphasis.
+  static const Color info = Color(0xFF3B82F6);
 
   // ---------------------------------------------------------------------------
   // Dark palette
   // ---------------------------------------------------------------------------
 
-  /// Near-black background.
-  static const Color darkBackground = Color(0xFF1A1A1A);
+  /// Near-black background with a hint of blue.
+  static const Color darkBackground = Color(0xFF0B0F19);
 
-  /// Dark gray surface.
-  static const Color darkSurface = Color(0xFF242424);
+  /// Elevated surface.
+  static const Color darkSurface = Color(0xFF141923);
 
-  /// Slightly lighter surface variant.
-  static const Color darkSurfaceVariant = Color(0xFF2E2E2E);
+  /// Secondary surface.
+  static const Color darkSurfaceVariant = Color(0xFF1E2433);
 
-  /// Lighter emerald for dark mode.
-  static const Color darkPrimary = Color(0xFF5FB896);
+  /// Tertiary surface.
+  static const Color darkSurfaceTertiary = Color(0xFF262D3D);
 
-  /// Dark emerald container.
-  static const Color darkPrimaryContainer = Color(0xFF1E3A2F);
+  /// Blue accent for dark mode.
+  static const Color darkPrimary = Color(0xFF5BA7FF);
 
-  /// White on-primary for dark mode.
+  /// Dark primary container.
+  static const Color darkPrimaryContainer = Color(0xFF0D2847);
+
+  /// White on primary (dark mode).
   static const Color darkOnPrimary = Color(0xFFFFFFFF);
 
-  /// Off-white primary text for dark mode.
-  static const Color darkTextPrimary = Color(0xFFF0F0F0);
+  /// Light text.
+  static const Color darkTextPrimary = Color(0xFFF1F5F9);
 
-  /// Medium gray secondary text for dark mode.
-  static const Color darkTextSecondary = Color(0xFFA0A0A0);
+  /// Muted text.
+  static const Color darkTextSecondary = Color(0xFF94A3B8);
 
-  /// Darker gray tertiary text for dark mode.
-  static const Color darkTextTertiary = Color(0xFF6B6B6B);
+  /// Dimmed text.
+  static const Color darkTextTertiary = Color(0xFF64748B);
 
-  /// Subtle dark border.
-  static const Color darkBorder = Color(0xFF3A3A3A);
+  /// Subtle borders.
+  static const Color darkBorder = Color(0xFF1E293B);
 
-  /// Very subtle dark border.
-  static const Color darkBorderLight = Color(0xFF333333);
+  /// Very subtle borders.
+  static const Color darkBorderLight = Color(0xFF1A2332);
 
-  /// Dark divider.
-  static const Color darkDivider = Color(0xFF353535);
+  /// Divider.
+  static const Color darkDivider = Color(0xFF1E293B);
 
-  /// Lighter red for dark mode.
-  static const Color darkError = Color(0xFFE5646E);
+  /// Dark mode error.
+  static const Color darkError = Color(0xFFF87171);
 
-  /// Lighter amber for dark mode.
-  static const Color darkWarning = Color(0xFFF5B74E);
+  /// Dark mode warning.
+  static const Color darkWarning = Color(0xFFFBBF24);
 
-  /// Dark mode success (same as darkPrimary).
-  static const Color darkSuccess = Color(0xFF5FB896);
+  /// Dark mode success.
+  static const Color darkSuccess = Color(0xFF34D399);
 
-  /// Lighter blue for dark mode.
-  static const Color darkInfo = Color(0xFF6CAAE0);
+  /// Dark mode info.
+  static const Color darkInfo = Color(0xFF60A5FA);
 
   // ---------------------------------------------------------------------------
-  // Card network colors
+  // Card network colours (fixed brand identity)
   // ---------------------------------------------------------------------------
 
   /// Visa brand blue.
@@ -128,4 +135,38 @@ final class AppColors {
 
   /// Discover brand orange.
   static const Color discover = Color(0xFFFF6000);
+
+  // ---------------------------------------------------------------------------
+  // Card face gradient palettes
+  // ---------------------------------------------------------------------------
+
+  /// Obsidian — premium dark card gradient.
+  static const List<Color> cardGradientObsidian = [
+    Color(0xFF1A1F2E),
+    Color(0xFF0F1318),
+  ];
+
+  /// Slate — sophisticated mid-tone.
+  static const List<Color> cardGradientSlate = [
+    Color(0xFF334155),
+    Color(0xFF1E293B),
+  ];
+
+  /// Sapphire — deep blue.
+  static const List<Color> cardGradientSapphire = [
+    Color(0xFF1E40AF),
+    Color(0xFF1E3A5F),
+  ];
+
+  /// Emerald — rich green.
+  static const List<Color> cardGradientEmerald = [
+    Color(0xFF065F46),
+    Color(0xFF064E3B),
+  ];
+
+  /// Rose gold.
+  static const List<Color> cardGradientRose = [
+    Color(0xFF9F1239),
+    Color(0xFF881337),
+  ];
 }

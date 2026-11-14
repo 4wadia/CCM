@@ -1,5 +1,5 @@
 import 'package:credit_card_manager/domain/entities/credit_card.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Displays a small coloured badge indicating the card network.
 ///

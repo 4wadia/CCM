@@ -75,4 +75,48 @@ void main() {
 
     expect(candidate.confidence, closeTo(0.5, 0.0001));
   });
+
+  test('accepts credit-card statement messages', () {
+    final candidate = EmailClassifier.classify(
+      messageId: 'message_5',
+      sender: 'statements@hdfcbank.com',
+      subject: 'Your HDFC credit card statement for card ending 4242',
+      receivedAt: receivedAt,
+      attachments: [pdf()],
+    );
+
+    expect(EmailClassifier.isCreditCardMessage(candidate), isTrue);
+  });
+
+  test('rejects debit-card and bank-account statements', () {
+    final debit = EmailClassifier.classify(
+      messageId: 'message_6',
+      sender: 'statements@hdfcbank.com',
+      subject: 'Debit card statement for account ending 4242',
+      receivedAt: receivedAt,
+      attachments: [pdf()],
+    );
+    final account = EmailClassifier.classify(
+      messageId: 'message_7',
+      sender: 'statements@icicibank.com',
+      subject: 'Your savings account statement',
+      receivedAt: receivedAt,
+      attachments: [pdf()],
+    );
+
+    expect(EmailClassifier.isCreditCardMessage(debit), isFalse);
+    expect(EmailClassifier.isCreditCardMessage(account), isFalse);
+  });
+
+  test('accepts card-only issuer statements without a card subject', () {
+    final candidate = EmailClassifier.classify(
+      messageId: 'message_8',
+      sender: 'statements@americanexpress.com',
+      subject: 'Your monthly statement',
+      receivedAt: receivedAt,
+      attachments: [pdf()],
+    );
+
+    expect(EmailClassifier.isCreditCardMessage(candidate), isTrue);
+  });
 }
