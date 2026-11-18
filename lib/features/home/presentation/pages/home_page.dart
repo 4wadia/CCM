@@ -11,6 +11,7 @@ import '../../../../shared/formatting/percent.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_radius.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/theme/app_typography.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
@@ -70,6 +71,10 @@ class _Dashboard extends StatelessWidget {
       for (final summary in portfolio.cards) summary.card.id: summary.card,
     };
 
+    final primarySummary = portfolio.byCurrency.isNotEmpty
+        ? portfolio.byCurrency.first
+        : null;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.pageHorizontal,
@@ -87,8 +92,15 @@ class _Dashboard extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
-        _HomeGmailCard(account: dashboard.emailAccount),
-        const SizedBox(height: 20),
+        if (primarySummary != null) ...[
+          _OnyxHeroHeader(
+            totalLimitMinor: primarySummary.creditLimitMinor,
+            totalSpendMinor: primarySummary.outstandingMinor,
+            currencyCode: primarySummary.currencyCode,
+            onSearchChanged: (_) {},
+          ),
+          const SizedBox(height: 16),
+        ],
 
         // Portfolio Hero: Combined Credit Limits & Balances.
         const SectionHeader(
@@ -108,6 +120,8 @@ class _Dashboard extends StatelessWidget {
         ],
 
         const SizedBox(height: 16),
+        _HomeGmailCard(account: dashboard.emailAccount),
+        const SizedBox(height: 20),
 
         // This Month / Spending Overview.
         const SectionHeader(
@@ -390,104 +404,24 @@ class _CurrencySummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            key: Key('available-${summary.currencyCode}'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Available credit',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                CurrencyText(
-                  amountMinor: summary.availableCreditMinor,
-                  currencyCode: summary.currencyCode,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 12),
+          _AmountRow(
+            key: Key('limit-${summary.currencyCode}'),
+            label: 'Total limit',
+            amountMinor: summary.creditLimitMinor,
+            currencyCode: summary.currencyCode,
           ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkSurfaceVariant
-                  : AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.border,
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    key: Key('limit-${summary.currencyCode}'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total limit',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        CurrencyText(
-                          amountMinor: summary.creditLimitMinor,
-                          currencyCode: summary.currencyCode,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
-                ),
-                Expanded(
-                  child: Container(
-                    key: Key('outstanding-${summary.currencyCode}'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Outstanding',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        CurrencyText(
-                          amountMinor: summary.outstandingMinor,
-                          currencyCode: summary.currencyCode,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          _AmountRow(
+            key: Key('outstanding-${summary.currencyCode}'),
+            label: 'Outstanding',
+            amountMinor: summary.outstandingMinor,
+            currencyCode: summary.currencyCode,
+          ),
+          _AmountRow(
+            key: Key('available-${summary.currencyCode}'),
+            label: 'Available credit',
+            amountMinor: summary.availableCreditMinor,
+            currencyCode: summary.currencyCode,
           ),
           const SizedBox(height: 10),
           if (utilisation == null)
@@ -654,6 +588,37 @@ class _CompactAmount extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AmountRow extends StatelessWidget {
+  const _AmountRow({
+    super.key,
+    required this.label,
+    required this.amountMinor,
+    required this.currencyCode,
+  });
+
+  final String label;
+  final int amountMinor;
+  final String currencyCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: theme.textTheme.bodySmall)),
+          CurrencyText(
+            amountMinor: amountMinor,
+            currencyCode: currencyCode,
+            style: theme.textTheme.labelLarge,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -831,6 +796,296 @@ class _HomeGmailCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OnyxHeroHeader extends StatefulWidget {
+  const _OnyxHeroHeader({
+    required this.totalLimitMinor,
+    required this.totalSpendMinor,
+    required this.currencyCode,
+    required this.onSearchChanged,
+  });
+
+  final int totalLimitMinor;
+  final int totalSpendMinor;
+  final String currencyCode;
+  final ValueChanged<String> onSearchChanged;
+
+  @override
+  State<_OnyxHeroHeader> createState() => _OnyxHeroHeaderState();
+}
+
+class _OnyxHeroHeaderState extends State<_OnyxHeroHeader> {
+  bool _balanceVisible = true;
+  bool _showSearch = false;
+  bool _showAlerts = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final goldColor = isDark ? AppColors.gold : AppColors.lightGold;
+
+    final utilizationPercent = widget.totalLimitMinor > 0
+        ? (widget.totalSpendMinor / widget.totalLimitMinor * 100)
+              .clamp(0, 100)
+              .round()
+        : 0;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            if (!_showSearch) ...[
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: goldColor, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'AS',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Arjun Sharma',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+            if (_showSearch)
+              Expanded(
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurfaceVariant
+                        : AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: goldColor.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, size: 18, color: goldColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          style: theme.textTheme.bodyMedium,
+                          decoration: const InputDecoration(
+                            hintText: 'Search merchant, bank...',
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                          ),
+                          onChanged: widget.onSearchChanged,
+                        ),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          setState(() {
+                            _showSearch = false;
+                            _searchController.clear();
+                          });
+                          widget.onSearchChanged('');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (!_showSearch) ...[
+              IconButton(
+                tooltip: 'Search',
+                icon: const Icon(Icons.search, size: 20),
+                onPressed: () => setState(() => _showSearch = true),
+              ),
+              IconButton(
+                tooltip: 'Portfolio alerts',
+                icon: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 20,
+                  color: _showAlerts ? goldColor : null,
+                ),
+                onPressed: () {
+                  setState(() => _showAlerts = !_showAlerts);
+                  if (_showAlerts) {
+                    showDialog<void>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Row(
+                          children: [
+                            Icon(
+                              Icons.verified_user_outlined,
+                              color: goldColor,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Portfolio Alerts'),
+                          ],
+                        ),
+                        content: const Text(
+                          'RBI Tokenization Active\nCredentials verified across Indian bank partners.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    ).then((_) {
+                      if (mounted) setState(() => _showAlerts = false);
+                    });
+                  }
+                },
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 18),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.border,
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'TOTAL MONTH SPEND',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      _balanceVisible
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 16,
+                      color: goldColor,
+                    ),
+                    onPressed: () =>
+                        setState(() => _balanceVisible = !_balanceVisible),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (_balanceVisible)
+                CurrencyText(
+                  amountMinor: widget.totalSpendMinor,
+                  currencyCode: widget.currencyCode,
+                  style: AppTypography.editorialDisplay(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                    height: 1.1,
+                  ),
+                )
+              else
+                Text(
+                  '••••••••',
+                  style: AppTypography.editorialDisplay(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                    height: 1.1,
+                  ),
+                ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: SizedBox(
+                  height: 4,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        color: isDark ? Colors.white10 : Colors.black12,
+                      ),
+                      FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: utilizationPercent / 100,
+                        child: Container(color: goldColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'LIMIT USED',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 14,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    '$utilizationPercent% of ${widget.currencyCode} ${(widget.totalLimitMinor / 100).round()}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 14,
+                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

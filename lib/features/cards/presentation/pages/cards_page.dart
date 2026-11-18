@@ -552,6 +552,8 @@ class _CardDetailSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
+          _ManageCardGrid(card: card, summary: summary),
+          const SizedBox(height: 12),
           AppCard(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -731,6 +733,136 @@ class _Metric extends StatelessWidget {
           currencyCode: currencyCode,
           style: theme.textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ManageCardGrid extends StatefulWidget {
+  const _ManageCardGrid({required this.card, required this.summary});
+
+  final CreditCard card;
+  final CardSummary summary;
+
+  @override
+  State<_ManageCardGrid> createState() => _ManageCardGridState();
+}
+
+class _ManageCardGridState extends State<_ManageCardGrid> {
+  bool _balanceVisible = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final card = widget.card;
+    final summary = widget.summary;
+    final goldColor = isDark ? AppColors.gold : AppColors.lightGold;
+
+    return Row(
+      children: [
+        Expanded(
+          child: AppCard(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'AVAILABLE',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        letterSpacing: 1.0,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        _balanceVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 14,
+                        color: goldColor,
+                      ),
+                      onPressed: () =>
+                          setState(() => _balanceVisible = !_balanceVisible),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                if (_balanceVisible)
+                  CurrencyText(
+                    amountMinor: summary.availableCreditMinor,
+                    currencyCode: card.currencyCode,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                else
+                  Text(
+                    '••••••••',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                const SizedBox(height: 2),
+                Text(
+                  'of ${card.currencyCode} ${(summary.creditLimitMinor / 100).round()}',
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: AppCard(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'PAYMENT DUE',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        letterSpacing: 1.0,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      'Due ${card.dueDay ?? '—'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        color: goldColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                CurrencyText(
+                  amountMinor: summary.outstandingMinor,
+                  currencyCode: card.currencyCode,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Reconciled balance',
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+                ),
+              ],
+            ),
           ),
         ),
       ],

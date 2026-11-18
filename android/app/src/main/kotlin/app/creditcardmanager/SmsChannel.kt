@@ -19,6 +19,7 @@ import io.flutter.plugin.common.MethodChannel
  */
 class SmsChannel(private val activity: Activity) : MethodChannel.MethodCallHandler {
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var pendingNotificationResult: MethodChannel.Result? = null
 
     fun register(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
         MethodChannel(binaryMessenger, CHANNEL).setMethodCallHandler(this)
@@ -29,6 +30,8 @@ class SmsChannel(private val activity: Activity) : MethodChannel.MethodCallHandl
             "isSupported" -> result.success(true)
             "hasPermission" -> result.success(hasPermission())
             "requestPermission" -> requestPermission(result)
+            "hasNotificationPermission" -> result.success(hasNotificationPermission())
+            "requestNotificationPermission" -> requestNotificationPermission(result)
             "readMessages" -> readMessages(call, result)
             else -> result.notImplemented()
         }
@@ -38,11 +41,17 @@ class SmsChannel(private val activity: Activity) : MethodChannel.MethodCallHandl
         requestCode: Int,
         grantResults: IntArray,
     ) {
-        if (requestCode != REQUEST_CODE) return
-        val granted = grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        pendingPermissionResult?.success(granted)
-        pendingPermissionResult = null
+        if (requestCode == REQUEST_CODE) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingPermissionResult?.success(granted)
+            pendingPermissionResult = null
+        } else if (requestCode == REQUEST_CODE_NOTIFICATION) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingNotificationResult?.success(granted)
+            pendingNotificationResult = null
+        }
     }
 
     private fun hasPermission(): Boolean =
@@ -66,6 +75,38 @@ class SmsChannel(private val activity: Activity) : MethodChannel.MethodCallHandl
             arrayOf(Manifest.permission.READ_SMS),
             REQUEST_CODE,
         )
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                activity,
+                "android.permission.POST_NOTIFICATIONS",
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun requestNotificationPermission(result: MethodChannel.Result) {
+        if (hasNotificationPermission()) {
+            result.success(true)
+            return
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (pendingNotificationResult != null) {
+                result.error("CCM-NOTIF-BUSY", "A notification permission request is active.", null)
+                return
+            }
+            pendingNotificationResult = result
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf("android.permission.POST_NOTIFICATIONS"),
+                REQUEST_CODE_NOTIFICATION,
+            )
+        } else {
+            result.success(true)
+        }
     }
 
     private fun readMessages(call: MethodCall, result: MethodChannel.Result) {
@@ -122,5 +163,6 @@ class SmsChannel(private val activity: Activity) : MethodChannel.MethodCallHandl
     companion object {
         private const val CHANNEL = "app.creditcardmanager/sms"
         private const val REQUEST_CODE = 0x534D
+        private const val REQUEST_CODE_NOTIFICATION = 0x534E
     }
 }

@@ -53,6 +53,7 @@ class GoogleAuthChannel(private val activity: Activity) : MethodChannel.MethodCa
                 listOf(
                     Scope("openid"),
                     Scope("email"),
+                    Scope("profile"),
                     Scope("https://www.googleapis.com/auth/gmail.readonly"),
                 ),
             )

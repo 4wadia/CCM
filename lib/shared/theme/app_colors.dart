@@ -11,8 +11,14 @@ final class AppColors {
   // Light palette
   // ---------------------------------------------------------------------------
 
-  /// Pure white background for maximum breathing room.
-  static const Color background = Color(0xFFF8F9FA);
+  /// Brushed Gold accent token.
+  static const Color gold = Color(0xFFD4AF37);
+
+  /// Light mode brushed gold accent token.
+  static const Color lightGold = Color(0xFF9A7B1C);
+
+  /// Pure warm ivory background.
+  static const Color background = Color(0xFFF8F7F4);
 
   /// Card / elevated surface.
   static const Color surface = Color(0xFFFFFFFF);
@@ -66,11 +72,11 @@ final class AppColors {
   // Dark palette
   // ---------------------------------------------------------------------------
 
-  /// Near-black background with a hint of blue.
-  static const Color darkBackground = Color(0xFF0B0F19);
+  /// Obsidian dark background.
+  static const Color darkBackground = Color(0xFF000000);
 
   /// Elevated surface.
-  static const Color darkSurface = Color(0xFF141923);
+  static const Color darkSurface = Color(0xFF1C1C1F);
 
   /// Secondary surface.
   static const Color darkSurfaceVariant = Color(0xFF1E2433);

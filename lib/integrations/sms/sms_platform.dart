@@ -13,6 +13,10 @@ abstract interface class SmsPlatform {
 
   Future<bool> requestPermission();
 
+  Future<bool> hasNotificationPermission();
+
+  Future<bool> requestNotificationPermission();
+
   Future<List<SmsMessage>> readMessages({
     required DateTime from,
     DateTime? to,
@@ -73,6 +77,34 @@ class MethodChannelSmsPlatform implements SmsPlatform {
   }
 
   @override
+  Future<bool> hasNotificationPermission() async {
+    if (!isSupported) return false;
+    try {
+      return await channel.invokeMethod<bool>('hasNotificationPermission') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> requestNotificationPermission() async {
+    if (!isSupported) return false;
+    try {
+      return await channel.invokeMethod<bool>(
+            'requestNotificationPermission',
+          ) ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  @override
   Future<List<SmsMessage>> readMessages({
     required DateTime from,
     DateTime? to,
@@ -129,6 +161,12 @@ class UnsupportedSmsPlatform implements SmsPlatform {
 
   @override
   Future<bool> requestPermission() async => false;
+
+  @override
+  Future<bool> hasNotificationPermission() async => false;
+
+  @override
+  Future<bool> requestNotificationPermission() async => false;
 
   @override
   Future<List<SmsMessage>> readMessages({

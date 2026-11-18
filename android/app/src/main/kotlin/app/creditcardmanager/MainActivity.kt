@@ -33,4 +33,32 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         googleAuthChannel?.onActivityResult(requestCode, resultCode, data)
     }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        enableHighRefreshRate()
+    }
+
+    private fun enableHighRefreshRate() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val display = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    display
+                } else {
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay
+                }
+                val modes = display?.supportedModes
+                val highestMode = modes?.maxByOrNull { it.refreshRate }
+                val params = window.attributes
+                if (highestMode != null && highestMode.refreshRate >= 60f) {
+                    params.preferredDisplayModeId = highestMode.modeId
+                }
+                params.preferredRefreshRate = 120f
+                window.attributes = params
+            }
+        } catch (_: Exception) {
+            // Graceful fallback for devices that do not expose custom display modes
+        }
+    }
 }

@@ -38,6 +38,12 @@ class FakeSmsPlatform implements SmsPlatform {
   Future<bool> requestPermission() async => permission;
 
   @override
+  Future<bool> hasNotificationPermission() async => true;
+
+  @override
+  Future<bool> requestNotificationPermission() async => true;
+
+  @override
   Future<List<SmsMessage>> readMessages({
     required DateTime from,
     DateTime? to,

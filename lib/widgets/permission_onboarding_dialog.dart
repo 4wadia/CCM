@@ -1,0 +1,464 @@
+import 'package:flutter/material.dart';
+
+import '../models/financial_models.dart';
+import '../services/auto_sync_service.dart';
+import '../theme/onyx_theme.dart';
+
+Future<void> showPermissionOnboardingDialog({
+  required BuildContext context,
+  required bool isDarkMode,
+  required VoidCallback onComplete,
+  required ValueChanged<UserProfileModel> onProfileUpdated,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    isDismissible: false,
+    enableDrag: false,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.8),
+    builder: (ctx) => _PermissionOnboardingSheet(
+      isDarkMode: isDarkMode,
+      onComplete: onComplete,
+      onProfileUpdated: onProfileUpdated,
+    ),
+  );
+}
+
+class _PermissionOnboardingSheet extends StatefulWidget {
+  final bool isDarkMode;
+  final VoidCallback onComplete;
+  final ValueChanged<UserProfileModel> onProfileUpdated;
+
+  const _PermissionOnboardingSheet({
+    required this.isDarkMode,
+    required this.onComplete,
+    required this.onProfileUpdated,
+  });
+
+  @override
+  State<_PermissionOnboardingSheet> createState() =>
+      _PermissionOnboardingSheetState();
+}
+
+class _PermissionOnboardingSheetState
+    extends State<_PermissionOnboardingSheet> {
+  final _syncService = AutoSyncService();
+  bool _smsGranted = false;
+  bool _emailConnected = false;
+  bool _notifsGranted = false;
+  bool _isLoading = false;
+  String? _connectedEmail;
+  String? _profileName;
+  String? _profilePhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInitialPermissions();
+  }
+
+  Future<void> _checkInitialPermissions() async {
+    final status = await _syncService.checkPermissions();
+    if (mounted) {
+      setState(() {
+        _smsGranted = status['sms'] ?? false;
+        _notifsGranted = status['notifications'] ?? false;
+      });
+    }
+  }
+
+  Future<void> _requestSms() async {
+    setState(() => _isLoading = true);
+    final res = await _syncService.requestAllPermissions();
+    if (mounted) {
+      setState(() {
+        _smsGranted = res['sms'] ?? true;
+        _notifsGranted = res['notifications'] ?? true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _connectEmail() async {
+    setState(() => _isLoading = true);
+    final profile = await _syncService.connectGoogleAccount();
+    if (mounted) {
+      if (profile != null) {
+        setState(() {
+          _emailConnected = true;
+          _connectedEmail = profile.email;
+          _profileName = profile.name;
+          _profilePhoto = profile.photoUrl;
+          _isLoading = false;
+        });
+        widget.onProfileUpdated(profile);
+      } else {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _grantAllAndProceed() async {
+    setState(() => _isLoading = true);
+    // Request SMS & Notifications
+    final res = await _syncService.requestAllPermissions();
+    _smsGranted = res['sms'] ?? true;
+    _notifsGranted = res['notifications'] ?? true;
+
+    // Connect Google Account if not yet connected
+    if (!_emailConnected) {
+      final profile = await _syncService.connectGoogleAccount();
+      if (profile != null) {
+        _emailConnected = true;
+        _connectedEmail = profile.email;
+        _profileName = profile.name;
+        _profilePhoto = profile.photoUrl;
+        widget.onProfileUpdated(profile);
+      }
+    } else if (_profileName != null) {
+      widget.onProfileUpdated(
+        UserProfileModel(
+          name: _profileName!,
+          email: _connectedEmail,
+          photoUrl: _profilePhoto,
+          isEmailConnected: _emailConnected,
+          isSmsGranted: _smsGranted,
+          isNotificationsGranted: _notifsGranted,
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      Navigator.of(context).pop();
+      widget.onComplete();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OnyxPalette(widget.isDarkMode);
+    final scale = OnyxScale.of(context);
+
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Container(
+            margin: EdgeInsets.all(scale.s(16)),
+            padding: EdgeInsets.all(scale.s(22)),
+            decoration: BoxDecoration(
+              color: palette.modalSurface,
+              borderRadius: BorderRadius.circular(scale.s(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Gold pill badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: scale.s(10),
+                          vertical: scale.s(4),
+                        ),
+                        decoration: BoxDecoration(
+                          color: palette.gold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: palette.gold.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Text(
+                          'SECURITY & PERMISSIONS',
+                          style: OnyxTypography.mono(
+                            fontSize: scale.s(9),
+                            color: palette.gold,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '100% On-Device',
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: palette.mutedText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: scale.s(12)),
+
+                  // Title
+                  Text(
+                    'Setup Smart Sync',
+                    style: OnyxTypography.editorial(
+                      fontSize: scale.s(26),
+                      fontWeight: FontWeight.w600,
+                      color: palette.primaryText,
+                    ),
+                  ),
+                  SizedBox(height: scale.s(6)),
+                  Text(
+                    'To automate card spend detection, monthly billing dues, and cashback tracking, Onyx requires local read access.',
+                    style: OnyxTypography.sans(
+                      fontSize: scale.s(12),
+                      color: palette.mutedText,
+                      height: 1.4,
+                    ),
+                  ),
+                  SizedBox(height: scale.s(18)),
+
+                  // Permission Item 1: SMS
+                  _PermissionCard(
+                    icon: Icons.sms_outlined,
+                    title: 'SMS Spend Reading',
+                    description: 'Automatically parses OTP-free bank debit SMS to track card transactions in real-time.',
+                    isGranted: _smsGranted,
+                    grantedLabel: 'SMS Granted',
+                    actionLabel: 'Allow SMS',
+                    onTap: _requestSms,
+                    palette: palette,
+                    scale: scale,
+                  ),
+                  SizedBox(height: scale.s(10)),
+
+                  // Permission Item 2: Email (Gmail)
+                  _PermissionCard(
+                    icon: Icons.mark_email_read_outlined,
+                    title: 'Email & Statement Access',
+                    description: _emailConnected
+                        ? 'Connected as ${_connectedEmail ?? 'Google Account'}. Name & profile photo synced.'
+                        : 'Connect Gmail to detect e-statements, reward points, cashback & sync your profile photo.',
+                    isGranted: _emailConnected,
+                    grantedLabel: _connectedEmail != null
+                        ? 'Connected (${_connectedEmail!.split('@').first})'
+                        : 'Connected',
+                    actionLabel: 'Connect Gmail',
+                    onTap: _connectEmail,
+                    palette: palette,
+                    scale: scale,
+                  ),
+                  SizedBox(height: scale.s(10)),
+
+                  // Permission Item 3: Notifications
+                  _PermissionCard(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'Payment & Due Alerts',
+                    description: 'Receive timely reminders before bill due dates to avoid interest and late fees.',
+                    isGranted: _notifsGranted,
+                    grantedLabel: 'Alerts Enabled',
+                    actionLabel: 'Enable Alerts',
+                    onTap: _requestSms,
+                    palette: palette,
+                    scale: scale,
+                  ),
+                  SizedBox(height: scale.s(20)),
+
+                  // CTA Button
+                  SizedBox(
+                    height: scale.s(48),
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _grantAllAndProceed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.isDarkMode
+                            ? palette.gold
+                            : const Color(0xFF111113),
+                        foregroundColor: widget.isDarkMode
+                            ? const Color(0xFF111113)
+                            : const Color(0xFFF8F7F4),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(scale.s(12)),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                              width: scale.s(20),
+                              height: scale.s(20),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: widget.isDarkMode
+                                    ? const Color(0xFF111113)
+                                    : const Color(0xFFF8F7F4),
+                              ),
+                            )
+                          : Text(
+                              _smsGranted && _emailConnected
+                                  ? 'Proceed to Dashboard'
+                                  : 'Grant Permissions & Continue',
+                              style: OnyxTypography.sans(
+                                fontSize: scale.s(13),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                  SizedBox(height: scale.s(10)),
+
+                  // Skip option
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onComplete();
+                      },
+                      child: Text(
+                        'Set up manually later',
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(10.5),
+                          color: palette.mutedText,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool isGranted;
+  final String grantedLabel;
+  final String actionLabel;
+  final VoidCallback onTap;
+  final OnyxPalette palette;
+  final OnyxScale scale;
+
+  const _PermissionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.isGranted,
+    required this.grantedLabel,
+    required this.actionLabel,
+    required this.onTap,
+    required this.palette,
+    required this.scale,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(scale.s(14)),
+      decoration: BoxDecoration(
+        color: palette.cardSurface,
+        borderRadius: BorderRadius.circular(scale.s(12)),
+        border: Border.all(
+          color: isGranted
+              ? palette.gold.withValues(alpha: 0.4)
+              : palette.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: scale.s(36),
+            height: scale.s(36),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isGranted
+                  ? palette.gold.withValues(alpha: 0.15)
+                  : palette.hoverFill,
+            ),
+            child: Icon(
+              icon,
+              size: scale.s(18),
+              color: isGranted ? palette.gold : palette.mutedText,
+            ),
+          ),
+          SizedBox(width: scale.s(12)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: OnyxTypography.sans(
+                        fontSize: scale.s(13),
+                        fontWeight: FontWeight.w600,
+                        color: palette.primaryText,
+                      ),
+                    ),
+                    if (isGranted)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: scale.s(14),
+                            color: palette.gold,
+                          ),
+                          SizedBox(width: scale.s(4)),
+                          Text(
+                            'Active',
+                            style: OnyxTypography.mono(
+                              fontSize: scale.s(9),
+                              color: palette.gold,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                SizedBox(height: scale.s(4)),
+                Text(
+                  description,
+                  style: OnyxTypography.sans(
+                    fontSize: scale.s(11),
+                    color: palette.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+                if (!isGranted) ...[
+                  SizedBox(height: scale.s(8)),
+                  GestureDetector(
+                    onTap: onTap,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: scale.s(10),
+                        vertical: scale.s(5),
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(scale.s(6)),
+                        border: Border.all(
+                          color: palette.gold.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Text(
+                        actionLabel,
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(10),
+                          fontWeight: FontWeight.w600,
+                          color: palette.gold,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

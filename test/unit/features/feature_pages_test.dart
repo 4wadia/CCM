@@ -512,7 +512,17 @@ void main() {
     expect(find.text('Rewards'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('Coffee House'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Points: 500 points'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Points: 500 points'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Statement day: 5 · Due day: 25'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Statement day: 5 · Due day: 25'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Reward programme: Points'),

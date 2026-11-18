@@ -156,4 +156,24 @@ abstract final class AppTypography {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
   }
+
+  /// Editorial serif text style (Cormorant Garamond / Serif style).
+  static TextStyle editorialDisplay({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+    FontStyle fontStyle = FontStyle.normal,
+    double? letterSpacing,
+    double? height,
+  }) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+  }
 }
