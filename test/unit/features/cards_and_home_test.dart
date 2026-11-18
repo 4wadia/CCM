@@ -283,10 +283,10 @@ void main() {
     expect(saved.lastFour, '4242');
     expect(saved.creditLimitMinor, 125050);
     expect(saved.currentOutstandingMinor, 25000);
-    expect(saved.currencyCode, 'USD');
-    expect(find.text('USD 1,250.50'), findsOneWidget);
-    expect(find.text('USD 250.00'), findsOneWidget);
-    expect(find.text('USD 1,000.50'), findsOneWidget);
+    expect(saved.currencyCode, 'INR');
+    expect(find.text('INR 1,250.50'), findsOneWidget);
+    expect(find.text('INR 250.00'), findsOneWidget);
+    expect(find.text('INR 1,000.50'), findsOneWidget);
   });
 
   testWidgets('edit form prefills and updates the reconciled balance', (

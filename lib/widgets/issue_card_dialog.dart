@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,21 +10,30 @@ import 'physical_credit_card.dart';
 Future<void> showIssueCardDialog({
   required BuildContext context,
   required bool isDarkMode,
+  String? holderName,
   required ValueChanged<CreditCardModel> onAddCard,
 }) {
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (ctx) =>
-        _IssueCardDialog(isDarkMode: isDarkMode, onAddCard: onAddCard),
+    builder: (ctx) => _IssueCardDialog(
+      isDarkMode: isDarkMode,
+      holderName: holderName,
+      onAddCard: onAddCard,
+    ),
   );
 }
 
 class _IssueCardDialog extends StatefulWidget {
   final bool isDarkMode;
+  final String? holderName;
   final ValueChanged<CreditCardModel> onAddCard;
 
-  const _IssueCardDialog({required this.isDarkMode, required this.onAddCard});
+  const _IssueCardDialog({
+    required this.isDarkMode,
+    required this.holderName,
+    required this.onAddCard,
+  });
 
   @override
   State<_IssueCardDialog> createState() => _IssueCardDialogState();
@@ -34,19 +41,22 @@ class _IssueCardDialog extends StatefulWidget {
 
 class _IssueCardDialogState extends State<_IssueCardDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _cardNumberController = TextEditingController();
+  final _lastFourController = TextEditingController();
   final _holderController = TextEditingController(text: '');
-  final _limitController = TextEditingController(text: '300000');
+  final _limitController = TextEditingController(text: '');
 
   IndianBank _selectedBank = IndianBank.hdfc;
   late String _selectedVariantName;
+  late CardSupplier _selectedBrand;
   String? _pickedImagePath;
 
   @override
   void initState() {
     super.initState();
     _selectedVariantName = bankCardVariants[_selectedBank]!.first.name;
-    _cardNumberController.addListener(_onFieldUpdated);
+    _selectedBrand = bankCardVariants[_selectedBank]!.first.defaultBrand;
+    _holderController.text = widget.holderName?.trim() ?? '';
+    _lastFourController.addListener(_onFieldUpdated);
     _holderController.addListener(_onFieldUpdated);
   }
 
@@ -67,7 +77,7 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
 
   @override
   void dispose() {
-    _cardNumberController.dispose();
+    _lastFourController.dispose();
     _holderController.dispose();
     _limitController.dispose();
     super.dispose();
@@ -81,71 +91,66 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
     orElse: () => _bankVariants.first,
   );
 
-  CardSupplier? get _detectedBrand =>
-      detectCardBrandFromNumber(_cardNumberController.text);
-
-  CardSupplier get _resolvedBrand =>
-      _detectedBrand ?? _selectedVariant.defaultBrand;
-
   CardColorMatch get _originalColor => fetchOriginalCardColor(
     _selectedBank,
     _selectedVariant.name,
-    _resolvedBrand,
+    _selectedBrand,
   );
 
   void _handleBankChange(IndianBank bank) {
+    final variants = bankCardVariants[bank] ?? const <CardVariantPreset>[];
     setState(() {
       _selectedBank = bank;
-      _selectedVariantName = bankCardVariants[bank]!.first.name;
+      _selectedVariantName = variants.isNotEmpty
+          ? variants.first.name
+          : 'Credit Card';
+      _selectedBrand = variants.isNotEmpty
+          ? variants.first.defaultBrand
+          : CardSupplier.visa;
+    });
+  }
+
+  void _handleVariantChange(String name) {
+    final variant = _bankVariants.firstWhere(
+      (v) => v.name == name,
+      orElse: () => _selectedVariant,
+    );
+    setState(() {
+      _selectedVariantName = variant.name;
+      _selectedBrand = variant.defaultBrand;
     });
   }
 
   void _handleSubmit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final random = Random();
-    final digits = _cardNumberController.text.replaceAll(RegExp(r'\D'), '');
+    final digits = _lastFourController.text.replaceAll(RegExp(r'\D'), '');
     final last4 = digits.length >= 4
         ? digits.substring(digits.length - 4)
-        : (1000 + random.nextInt(9000)).toString();
-
-    final prefix = switch (_resolvedBrand) {
-      CardSupplier.visa => '4532',
-      CardSupplier.mastercard => '5421',
-      CardSupplier.rupay => '6521',
-      CardSupplier.diners => '3612',
-      CardSupplier.amex => '3742',
-    };
-
-    final cleanNumber = digits.length >= 12
-        ? formatCardNumberInput(digits, _resolvedBrand)
-        : '$prefix ${1000 + random.nextInt(9000)} ${1000 + random.nextInt(9000)} $last4';
-
-    final numericLimit = max(
-      10000.0,
-      double.tryParse(_limitController.text.trim()) ?? 300000.0,
-    );
+        : '0000';
+    final numericLimit = double.tryParse(_limitController.text.trim()) ?? 0;
     final holder = _holderController.text.trim().isEmpty
-        ? 'Arjun Sharma'
-        : _holderController.text.trim();
+        ? 'CARDHOLDER'
+        : _holderController.text.trim().toUpperCase();
     final original = _originalColor;
+    final variantLabel = _selectedVariant.name.trim().isEmpty
+        ? 'Credit Card'
+        : _selectedVariant.name.trim();
 
     final newCard = CreditCardModel(
       id: 'card-${DateTime.now().millisecondsSinceEpoch}',
       bankName: _selectedBank,
       holderName: holder,
-      cardNumber: cleanNumber,
       maskedNumber: '•••• $last4',
-      expiry: '09/30',
-      cvv: (100 + random.nextInt(900)).toString(),
+      expiry: '',
       balance: 0,
       limit: numericLimit,
-      brand: _resolvedBrand,
-      cardTier: '${_selectedBank.shortName} ${_selectedVariant.name}',
+      brand: _selectedBrand,
+      cardTier: '${_selectedBank.shortName} $variantLabel',
       cardColorValue: original.color.toARGB32(),
       isLightCard: original.isLight,
       dailyLimit: (numericLimit * 0.25).roundToDouble(),
-      internationalEnabled: _resolvedBrand != CardSupplier.rupay,
+      internationalEnabled: _selectedBrand != CardSupplier.rupay,
       cardImagePath: _pickedImagePath,
       cardImageUrl: _pickedImagePath == null
           ? fetchOriginalCardImageUrl(_selectedBank, _selectedVariant.name)
@@ -200,10 +205,10 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = OnyxPalette(widget.isDarkMode);
-    final digits = _cardNumberController.text.replaceAll(RegExp(r'\D'), '');
+    final digits = _lastFourController.text.replaceAll(RegExp(r'\D'), '');
     final previewLast4 = digits.length >= 4
         ? digits.substring(digits.length - 4)
-        : '8824';
+        : '••••';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -345,14 +350,14 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                     card: CreditCardModel(
                       id: 'preview',
                       bankName: _selectedBank,
-                      holderName: _holderController.text,
-                      cardNumber: _cardNumberController.text,
-                      maskedNumber: previewLast4,
-                      expiry: '09/30',
-                      cvv: '•••',
+                      holderName: _holderController.text.trim().isEmpty
+                          ? 'CARDHOLDER'
+                          : _holderController.text.trim().toUpperCase(),
+                      maskedNumber: '•••• $previewLast4',
+                      expiry: '',
                       balance: 0,
                       limit: 500000,
-                      brand: _resolvedBrand,
+                      brand: _selectedBrand,
                       cardTier: _selectedVariant.name,
                       dailyLimit: 100000,
                       cardImagePath: _pickedImagePath,
@@ -361,9 +366,10 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Card Number Input with BIN detection badge
+                  // Only the last four digits are collected. Full card numbers
+                  // and security codes are never requested or stored.
                   Text(
-                    'CARD NUMBER',
+                    'CARD LAST 4 DIGITS',
                     style: OnyxTypography.mono(
                       fontSize: 10,
                       color: palette.mutedText,
@@ -372,9 +378,12 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
-                    controller: _cardNumberController,
+                    controller: _lastFourController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [_CardNumberTextFormatter()],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
                     style: OnyxTypography.mono(
                       fontSize: 12,
                       color: palette.primaryText,
@@ -382,98 +391,56 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                       tabularFigures: true,
                     ),
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Enter card number';
+                      final digits = (val ?? '').replaceAll(RegExp(r'\D'), '');
+                      if (digits.length != 4) {
+                        return 'Enter the last 4 digits';
                       }
                       return null;
                     },
-                    decoration: _inputDecoration(
-                      palette,
-                      hint: '4532 •••• •••• ••••',
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _detectedBrand != null
-                                    ? (widget.isDarkMode
-                                          ? const Color(0xFFD4AF37)
-                                          : const Color(0xFF111113))
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                              child: Text(
-                                _resolvedBrand.label,
-                                style: OnyxTypography.mono(
-                                  fontSize: 10,
-                                  fontWeight: _detectedBrand != null
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: _detectedBrand != null
-                                      ? (widget.isDarkMode
-                                            ? const Color(0xFF111113)
-                                            : const Color(0xFFF8F7F4))
-                                      : palette.mutedText,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    decoration: _inputDecoration(palette, hint: '8824'),
                   ),
                   const SizedBox(height: 14),
 
-                  // Issuing Bank & Card Variant (Selection Lists Only)
+                  // Issuing Bank
+                  Text(
+                    'ISSUING BANK',
+                    style: OnyxTypography.mono(
+                      fontSize: 10,
+                      color: palette.mutedText,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<IndianBank>(
+                    initialValue: _selectedBank,
+                    isExpanded: true,
+                    menuMaxHeight: 340,
+                    dropdownColor: palette.cardSurface,
+                    style: OnyxTypography.sans(
+                      fontSize: 12,
+                      color: palette.primaryText,
+                    ),
+                    decoration: _inputDecoration(palette),
+                    items: IndianBank.values
+                        .map(
+                          (bank) => DropdownMenuItem(
+                            value: bank,
+                            child: Text(
+                              bank.displayName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (bank) {
+                      if (bank != null) _handleBankChange(bank);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Card Variant & Network
                   Row(
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ISSUING BANK',
-                              style: OnyxTypography.mono(
-                                fontSize: 10,
-                                color: palette.mutedText,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            DropdownButtonFormField<IndianBank>(
-                              initialValue: _selectedBank,
-                              isExpanded: true,
-                              dropdownColor: palette.cardSurface,
-                              style: OnyxTypography.sans(
-                                fontSize: 12,
-                                color: palette.primaryText,
-                              ),
-                              decoration: _inputDecoration(palette),
-                              items: IndianBank.values
-                                  .map(
-                                    (bank) => DropdownMenuItem(
-                                      value: bank,
-                                      child: Text(
-                                        bank.displayName,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (bank) {
-                                if (bank != null) _handleBankChange(bank);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,6 +458,7 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                               key: ValueKey('variant-${_selectedBank.name}'),
                               initialValue: _selectedVariant.name,
                               isExpanded: true,
+                              menuMaxHeight: 340,
                               dropdownColor: palette.cardSurface,
                               style: OnyxTypography.sans(
                                 fontSize: 12,
@@ -509,8 +477,52 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                                   )
                                   .toList(),
                               onChanged: (name) {
-                                if (name != null) {
-                                  setState(() => _selectedVariantName = name);
+                                if (name != null) _handleVariantChange(name);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'NETWORK',
+                              style: OnyxTypography.mono(
+                                fontSize: 10,
+                                color: palette.mutedText,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            DropdownButtonFormField<CardSupplier>(
+                              key: ValueKey(
+                                'network-${_selectedBrand.name}-$_selectedVariantName',
+                              ),
+                              initialValue: _selectedBrand,
+                              isExpanded: true,
+                              dropdownColor: palette.cardSurface,
+                              style: OnyxTypography.sans(
+                                fontSize: 12,
+                                color: palette.primaryText,
+                              ),
+                              decoration: _inputDecoration(palette),
+                              items: CardSupplier.values
+                                  .map(
+                                    (brand) => DropdownMenuItem(
+                                      value: brand,
+                                      child: Text(
+                                        brand.label,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (brand) {
+                                if (brand != null) {
+                                  setState(() => _selectedBrand = brand);
                                 }
                               },
                             ),
@@ -625,21 +637,6 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CardNumberTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final brand = detectCardBrandFromNumber(newValue.text);
-    final formatted = formatCardNumberInput(newValue.text, brand);
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

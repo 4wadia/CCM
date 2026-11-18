@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'data/mock_financial_data.dart';
 import 'models/financial_models.dart';
 import 'screens/cards_screen.dart';
 import 'screens/home_screen.dart';
@@ -25,10 +24,6 @@ void main() {
   PaintingBinding.instance.imageCache.maximumSize = 100;
   PaintingBinding.instance.imageCache.maximumSizeBytes =
       50 * 1024 * 1024; // 50 MB
-  // Low-end memory optimization: limit decoded image cache to prevent GC pauses
-  PaintingBinding.instance.imageCache.maximumSize = 100;
-  PaintingBinding.instance.imageCache.maximumSizeBytes =
-      50 * 1024 * 1024; // 50 MB
   runApp(const OnyxCardsApp());
 }
 
@@ -44,20 +39,13 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
   bool _isDarkMode = true;
   ScreenId _activeTab = ScreenId.home;
   CreditCardModel? _selectedCardForManage;
-  List<CreditCardModel> _cards = List.of(initialCards);
-  final List<TransactionModel> _transactions = List.of(initialTransactions);
+  List<CreditCardModel> _cards = <CreditCardModel>[];
+  final List<TransactionModel> _transactions = <TransactionModel>[];
   String? _statusPillMessage;
   Timer? _toastTimer;
   bool _hasPromptedPermissions = false;
 
-  UserProfileModel _userProfile = const UserProfileModel(
-    name: 'Arjun Sharma',
-    email: 'arjun.sharma@gmail.com',
-    photoUrl: null,
-    isEmailConnected: true,
-    isSmsGranted: true,
-    isNotificationsGranted: true,
-  );
+  UserProfileModel _userProfile = const UserProfileModel(name: '');
 
   @override
   void initState() {
@@ -108,16 +96,19 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
 
     if (!mounted) return;
 
+    if (result.transactions.isNotEmpty) {
+      setState(() {
+        _transactions.insertAll(0, result.transactions);
+      });
+    }
+
     if (result.addedCards.isNotEmpty) {
       setState(() {
         _cards = [...result.addedCards, ..._cards];
-        if (result.transactions.isNotEmpty) {
-          _transactions.insertAll(0, result.transactions);
-        }
       });
 
       _showStatusToast(
-        'Auto-detected ${result.addedCards.length} cards from SMS (${result.validCreditCardPaymentCount} txns synced)',
+        'Auto-detected ${result.addedCards.length} cards from SMS (${result.transactions.length} txns synced)',
       );
 
       // Auto-prompt user to complete the detected card
@@ -208,9 +199,13 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
           );
         }
       });
-      _showStatusToast(
-        'Auto-synced ${syncResult.transactions.length} txns & ₹${syncResult.cashbackEarned.toStringAsFixed(0)} rewards',
-      );
+      if (syncResult.transactions.isNotEmpty) {
+        _showStatusToast(
+          'Auto-synced ${syncResult.transactions.length} txns & ₹${syncResult.cashbackEarned.toStringAsFixed(0)} rewards',
+        );
+      } else {
+        _showStatusToast('No matching SMS transactions found yet.');
+      }
     }
   }
 
@@ -284,6 +279,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                   onOpenNewCardModal: () => showIssueCardDialog(
                                     context: innerContext,
                                     isDarkMode: _isDarkMode,
+                                    holderName: _userProfile.name,
                                     onAddCard: (card) =>
                                         _handleAddCard(innerContext, card),
                                   ),

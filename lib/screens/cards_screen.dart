@@ -118,65 +118,129 @@ class CardsScreen extends StatelessWidget {
 
           SizedBox(height: scale.s(14)),
 
-          // Vertical Stack of Original-Color Physical Cards (Tightly Spaced)
-          for (int i = 0; i < cards.length; i++) ...[
-            PhysicalCreditCard(
-              card: cards[i],
-              onTap: () {
-                if (cards[i].isNeedsCompletion && onCompleteCard != null) {
-                  onCompleteCard!(cards[i]);
-                } else {
-                  onSelectCard(cards[i]);
-                }
-              },
-            ),
-            if (cards[i].isNeedsCompletion) ...[
-              SizedBox(height: scale.s(6)),
-              GestureDetector(
-                onTap: () => onCompleteCard?.call(cards[i]),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: scale.s(14),
-                    vertical: scale.s(8),
+          if (cards.isEmpty)
+            Container(
+              padding: EdgeInsets.all(scale.s(22)),
+              decoration: BoxDecoration(
+                color: palette.cardSurface,
+                borderRadius: BorderRadius.circular(scale.s(18)),
+                border: Border.all(color: palette.gold.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.credit_card_outlined,
+                    size: scale.s(34),
+                    color: palette.gold,
                   ),
-                  decoration: BoxDecoration(
-                    color: palette.gold.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(scale.s(10)),
+                  SizedBox(height: scale.s(12)),
+                  Text(
+                    'No cards yet',
+                    style: OnyxTypography.editorial(
+                      fontSize: scale.s(22),
+                      fontWeight: FontWeight.w600,
+                      color: palette.primaryText,
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.auto_awesome,
-                            size: scale.s(14),
-                            color: palette.gold,
-                          ),
-                          SizedBox(width: scale.s(8)),
-                          Text(
-                            'COMPLETE SETUP · CHOOSE MODEL & NUMBER',
-                            style: OnyxTypography.mono(
-                              fontSize: scale.s(9.5),
-                              fontWeight: FontWeight.w700,
+                  SizedBox(height: scale.s(6)),
+                  Text(
+                    'Add your first card, or allow SMS access so the app can detect cards and transactions from your bank messages.',
+                    textAlign: TextAlign.center,
+                    style: OnyxTypography.sans(
+                      fontSize: scale.s(12),
+                      color: palette.mutedText,
+                      height: 1.4,
+                    ),
+                  ),
+                  SizedBox(height: scale.s(16)),
+                  GestureDetector(
+                    onTap: onOpenNewCardModal,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: scale.s(18),
+                        vertical: scale.s(10),
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF111113),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Add your first card',
+                        style: OnyxTypography.sans(
+                          fontSize: scale.s(13),
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode
+                              ? const Color(0xFF111113)
+                              : const Color(0xFFF8F7F4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            // Vertical Stack of Original-Color Physical Cards (Tightly Spaced)
+            for (int i = 0; i < cards.length; i++) ...[
+              PhysicalCreditCard(
+                card: cards[i],
+                onTap: () {
+                  if (cards[i].isNeedsCompletion && onCompleteCard != null) {
+                    onCompleteCard!(cards[i]);
+                  } else {
+                    onSelectCard(cards[i]);
+                  }
+                },
+              ),
+              if (cards[i].isNeedsCompletion) ...[
+                SizedBox(height: scale.s(6)),
+                GestureDetector(
+                  onTap: () => onCompleteCard?.call(cards[i]),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: scale.s(14),
+                      vertical: scale.s(8),
+                    ),
+                    decoration: BoxDecoration(
+                      color: palette.gold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(scale.s(10)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.auto_awesome,
+                              size: scale.s(14),
                               color: palette.gold,
-                              letterSpacing: 0.8,
                             ),
-                          ),
-                        ],
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: scale.s(16),
-                        color: palette.gold,
-                      ),
-                    ],
+                            SizedBox(width: scale.s(8)),
+                            Text(
+                              'COMPLETE SETUP · CHOOSE BANK & MODEL',
+                              style: OnyxTypography.mono(
+                                fontSize: scale.s(9.5),
+                                fontWeight: FontWeight.w700,
+                                color: palette.gold,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: scale.s(16),
+                          color: palette.gold,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
+              if (i < cards.length - 1) SizedBox(height: scale.s(10)),
             ],
-            if (i < cards.length - 1) SizedBox(height: scale.s(10)),
-          ],
         ],
       ),
     );

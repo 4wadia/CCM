@@ -169,7 +169,7 @@ class PhysicalCreditCard extends StatelessWidget {
 
     final last4 = card.maskedNumber.length >= 4
         ? card.maskedNumber.substring(card.maskedNumber.length - 4)
-        : '5168';
+        : '••••';
 
     final Widget cardBody = RepaintBoundary(
       child: AspectRatio(
@@ -305,7 +305,7 @@ class PhysicalCreditCard extends StatelessWidget {
                                     Text(
                                       card.expiry.isNotEmpty
                                           ? card.expiry
-                                          : '12/28',
+                                          : '••/••',
                                       style: OnyxTypography.mono(
                                         fontSize: scale.s(11),
                                         fontWeight: FontWeight.w600,

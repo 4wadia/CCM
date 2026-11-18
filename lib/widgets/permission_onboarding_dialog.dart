@@ -74,8 +74,8 @@ class _PermissionOnboardingSheetState
     final res = await _syncService.requestAllPermissions();
     if (mounted) {
       setState(() {
-        _smsGranted = res['sms'] ?? true;
-        _notifsGranted = res['notifications'] ?? true;
+        _smsGranted = res['sms'] ?? false;
+        _notifsGranted = res['notifications'] ?? false;
         _isLoading = false;
       });
     }
@@ -104,8 +104,8 @@ class _PermissionOnboardingSheetState
     setState(() => _isLoading = true);
     // Request SMS & Notifications
     final res = await _syncService.requestAllPermissions();
-    _smsGranted = res['sms'] ?? true;
-    _notifsGranted = res['notifications'] ?? true;
+    _smsGranted = res['sms'] ?? false;
+    _notifsGranted = res['notifications'] ?? false;
 
     // Connect Google Account if not yet connected
     if (!_emailConnected) {
@@ -159,11 +159,6 @@ class _PermissionOnboardingSheetState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Center(child: AppLogo(size: scale.s(48))),
-                  SizedBox(height: scale.s(16)),
-
-                  Center(
-                    child: AppLogo(size: scale.s(48)),
-                  ),
                   SizedBox(height: scale.s(16)),
 
                   // Gold pill badge

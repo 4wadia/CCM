@@ -816,7 +816,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 vertical: scale.s(24),
                               ),
                               child: Text(
-                                'No matching transactions found.',
+                                _searchQuery.isEmpty
+                                    ? 'No transactions yet. Add a card or allow SMS access to start.'
+                                    : 'No matching transactions found.',
                                 textAlign: TextAlign.center,
                                 style: OnyxTypography.sans(
                                   fontSize: scale.s(12),

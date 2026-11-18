@@ -41,7 +41,7 @@ class _CardEditorSheetState extends ConsumerState<CardEditorSheet> {
     super.initState();
     final card = widget.card;
     _issuerController = TextEditingController();
-    _countryController = TextEditingController(text: 'US');
+    _countryController = TextEditingController(text: 'IN');
     _nameController = TextEditingController(text: card?.displayName ?? '');
     _cardholderController = TextEditingController(
       text: card?.cardholderName ?? '',
@@ -61,7 +61,7 @@ class _CardEditorSheetState extends ConsumerState<CardEditorSheet> {
             ),
     );
     _currencyController = TextEditingController(
-      text: card?.currencyCode ?? 'USD',
+      text: card?.currencyCode ?? 'INR',
     );
     _statementDayController = TextEditingController(
       text: card?.statementDay?.toString() ?? '',
@@ -152,7 +152,10 @@ class _CardEditorSheetState extends ConsumerState<CardEditorSheet> {
                 key: const Key('card-issuer'),
                 controller: _issuerController,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Issuer'),
+                decoration: const InputDecoration(
+                  labelText: 'Bank / issuer',
+                  hintText: 'Choose or type the issuing bank',
+                ),
                 validator: CardFormValidation.requiredText,
               ),
               Row(

@@ -4,8 +4,9 @@ Local-first, cross-platform credit card management application built with Flutte
 
 **Status:** M3–M10 host-verified implementation — transactions, Android SMS, Gmail
 statement sync, encrypted PDF processing, rewards, encrypted backup/restore, and local
-wipe are implemented. iOS, physical-device, real-OAuth, and verified bank-fixture
-validation remain pending.
+wipe are implemented. Fresh installs start with no cards or transactions; data is
+created only from the user's SMS/statements or manual entry. iOS, physical-device,
+real-OAuth, and verified bank-fixture validation remain pending.
 **Specification:** `../credit_card_manager_technical_specification.md`
 **Implementation plan:** `../credit_card_manager_implementation_plan.md`
 
@@ -77,6 +78,17 @@ flutter build ios --debug \
 
 See [`docs/release.md`](docs/release.md).
 
+## Card catalogue and fresh-install behaviour
+
+The add-card and auto-detected-card completion flows include a curated catalogue of
+46 Indian banks and card issuers, their common card products, and an **Other card**
+fallback for newly launched or unlisted products. Users can select the issuing bank,
+card model, and network. Only the last four digits are accepted; full card numbers,
+CVVs, PINs, passwords, and OAuth tokens are never stored.
+
+A fresh install contains zero cards and zero transactions. The app only creates records
+from messages the user has allowed it to read or from details the user enters manually.
+
 ## Project layout
 
 ```text
@@ -101,7 +113,7 @@ Import-source behavior and bank-adapter limits: [`docs/bank-adapters.md`](docs/b
 ## Verification
 
 On this Linux host: `dart format` is clean, `flutter analyze` reports no issues,
-`flutter test` passes 165/165, and `flutter build apk --debug` succeeds. The debug APK is
+`flutter test` passes 199/199, and `flutter build apk --debug` succeeds. The debug APK is
 at `build/app/outputs/flutter-apk/app-debug.apk`.
 
 Not validated here: iOS build/Keychain/TestFlight (no macOS host), Android device

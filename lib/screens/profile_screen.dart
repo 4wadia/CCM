@@ -45,6 +45,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _statusMessage = 'Google profile synced successfully!';
         });
+      } else {
+        setState(() {
+          _statusMessage = 'Google sign-in was not completed.';
+        });
       }
     } catch (_) {
       setState(() {
@@ -72,8 +76,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final res = await _syncService.requestAllPermissions();
     widget.onUpdateProfile(
       widget.profile.copyWith(
-        isSmsGranted: res['sms'] ?? true,
-        isNotificationsGranted: res['notifications'] ?? true,
+        isSmsGranted: res['sms'] ?? false,
+        isNotificationsGranted: res['notifications'] ?? false,
       ),
     );
   }
@@ -91,7 +95,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
               .take(2)
               .join()
-        : 'AS';
+        : '•';
+    final displayName = profile.name.trim().isNotEmpty
+        ? profile.name.trim()
+        : 'Cardholder';
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -215,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Name
                 Text(
-                  profile.name,
+                  displayName,
                   style: OnyxTypography.sans(
                     fontSize: scale.s(18),
                     fontWeight: FontWeight.w600,

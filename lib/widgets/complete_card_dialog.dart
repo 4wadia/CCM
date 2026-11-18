@@ -40,41 +40,48 @@ class _CompleteCardDialog extends StatefulWidget {
 
 class _CompleteCardDialogState extends State<_CompleteCardDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _cardNumberController;
+  late final TextEditingController _lastFourController;
   late final TextEditingController _holderController;
   late final TextEditingController _limitController;
 
+  late IndianBank _selectedBank;
   late String _selectedVariantName;
   late CardSupplier _selectedBrand;
 
   @override
   void initState() {
     super.initState();
-    final last4 = widget.card.maskedNumber.length >= 4
-        ? widget.card.maskedNumber.substring(
-            widget.card.maskedNumber.length - 4,
-          )
-        : '5168';
-
-    _cardNumberController = TextEditingController(
-      text: widget.card.cardNumber.contains('•')
-          ? '4532 8920 4421 $last4'
-          : widget.card.cardNumber,
+    final detectedDigits = widget.card.maskedNumber.replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
+    _lastFourController = TextEditingController(
+      text: detectedDigits.length >= 4
+          ? detectedDigits.substring(detectedDigits.length - 4)
+          : '',
     );
     _holderController = TextEditingController(text: widget.card.holderName);
     _limitController = TextEditingController(
-      text: widget.card.limit > 0
-          ? widget.card.limit.toStringAsFixed(0)
-          : '300000',
+      text: widget.card.limit > 0 ? widget.card.limit.toStringAsFixed(0) : '',
     );
 
-    final variants = bankCardVariants[widget.card.bankName] ?? [];
-    _selectedVariantName = variants.isNotEmpty
-        ? variants.first.name
-        : widget.card.cardTier;
+    _selectedBank = widget.card.bankName;
     _selectedBrand = widget.card.brand;
 
-    _cardNumberController.addListener(_onFieldUpdated);
+    final variants = bankCardVariants[_selectedBank] ?? const [];
+    final tierLower = widget.card.cardTier.toLowerCase();
+    String? matchingVariant;
+    for (final variant in variants) {
+      if (tierLower.contains(variant.name.toLowerCase())) {
+        matchingVariant = variant.name;
+        break;
+      }
+    }
+    _selectedVariantName =
+        matchingVariant ??
+        (variants.isNotEmpty ? variants.first.name : 'Credit Card');
+
+    _lastFourController.addListener(_onFieldUpdated);
     _holderController.addListener(_onFieldUpdated);
   }
 
@@ -84,22 +91,22 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
 
   @override
   void dispose() {
-    _cardNumberController.dispose();
+    _lastFourController.dispose();
     _holderController.dispose();
     _limitController.dispose();
     super.dispose();
   }
 
   List<CardVariantPreset> get _bankVariants =>
-      bankCardVariants[widget.card.bankName] ?? const [];
+      bankCardVariants[_selectedBank] ?? const [];
 
   CardVariantPreset get _selectedVariant => _bankVariants.firstWhere(
     (v) => v.name == _selectedVariantName,
     orElse: () => _bankVariants.isNotEmpty
         ? _bankVariants.first
         : CardVariantPreset(
-            name: widget.card.cardTier,
-            defaultBrand: widget.card.brand,
+            name: 'Credit Card',
+            defaultBrand: _selectedBrand,
             color: const CardColorMatch(
               label: 'Classic',
               color: Color(0xFF1E2026),
@@ -108,32 +115,50 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
           ),
   );
 
-  CardSupplier get _resolvedBrand =>
-      detectCardBrandFromNumber(_cardNumberController.text) ?? _selectedBrand;
+  String get _enteredLast4 {
+    final digits = _lastFourController.text.replaceAll(RegExp(r'\D'), '');
+    return digits.length >= 4 ? digits.substring(digits.length - 4) : '';
+  }
 
   CreditCardModel get _previewCard {
-    final rawNumber = _cardNumberController.text.trim();
-    final digits = rawNumber.replaceAll(RegExp(r'\D'), '');
-    final last4 = digits.length >= 4
-        ? digits.substring(digits.length - 4)
-        : (widget.card.maskedNumber.length >= 4
-              ? widget.card.maskedNumber.substring(
-                  widget.card.maskedNumber.length - 4,
-                )
-              : '5168');
-    final masked = '•••• $last4';
+    final last4 = _enteredLast4;
+    final masked = last4.isEmpty ? '•••• ••••' : '•••• $last4';
 
     return widget.card.copyWith(
-      cardTier: _selectedVariant.name,
-      cardNumber: rawNumber.isNotEmpty ? rawNumber : widget.card.cardNumber,
+      bankName: _selectedBank,
+      cardTier: '${_selectedBank.shortName} ${_selectedVariant.name}',
       maskedNumber: masked,
       holderName: _holderController.text.trim().isNotEmpty
           ? _holderController.text.trim().toUpperCase()
           : widget.card.holderName,
-      brand: _resolvedBrand,
+      brand: _selectedBrand,
       limit: double.tryParse(_limitController.text.trim()) ?? widget.card.limit,
       isNeedsCompletion: false,
     );
+  }
+
+  void _handleBankChange(IndianBank bank) {
+    final variants = bankCardVariants[bank] ?? const <CardVariantPreset>[];
+    setState(() {
+      _selectedBank = bank;
+      _selectedVariantName = variants.isNotEmpty
+          ? variants.first.name
+          : 'Credit Card';
+      _selectedBrand = variants.isNotEmpty
+          ? variants.first.defaultBrand
+          : CardSupplier.visa;
+    });
+  }
+
+  void _handleVariantChange(String name) {
+    final variant = _bankVariants.firstWhere(
+      (v) => v.name == name,
+      orElse: () => _selectedVariant,
+    );
+    setState(() {
+      _selectedVariantName = variant.name;
+      _selectedBrand = variant.defaultBrand;
+    });
   }
 
   void _handleSave() {
@@ -148,11 +173,13 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
   Widget build(BuildContext context) {
     final palette = OnyxPalette(widget.isDarkMode);
     final scale = OnyxScale.of(context);
-    final last4 = widget.card.maskedNumber.length >= 4
-        ? widget.card.maskedNumber.substring(
-            widget.card.maskedNumber.length - 4,
-          )
-        : '5168';
+    final detectedDigits = widget.card.maskedNumber.replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
+    final detectedLast4 = detectedDigits.length >= 4
+        ? detectedDigits.substring(detectedDigits.length - 4)
+        : '••••';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -175,7 +202,7 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Top Status Tag & Bank Info
+                  // Top Status Tag & Close Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -240,7 +267,7 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                   ),
                   SizedBox(height: scale.s(4)),
                   Text(
-                    'We detected your ${widget.card.bankName.displayName} card ending in $last4. Select your card model and verify card number to activate full features.',
+                    'We detected a card ending in $detectedLast4. Choose the bank that issued it, then confirm the card model, network and last four digits.',
                     style: OnyxTypography.sans(
                       fontSize: scale.s(11.5),
                       color: palette.mutedText,
@@ -253,7 +280,56 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                   PhysicalCreditCard(card: _previewCard, aspectRatio: 1.586),
                   SizedBox(height: scale.s(20)),
 
-                  // Section 1: Which card model is this?
+                  // Section 1: Which bank issued this card?
+                  Text(
+                    'WHICH BANK ISSUED THIS CARD?',
+                    style: OnyxTypography.mono(
+                      fontSize: scale.s(10),
+                      fontWeight: FontWeight.w600,
+                      color: palette.mutedText,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: scale.s(8)),
+                  DropdownButtonFormField<IndianBank>(
+                    initialValue: _selectedBank,
+                    isExpanded: true,
+                    menuMaxHeight: 340,
+                    dropdownColor: palette.cardSurface,
+                    style: OnyxTypography.sans(
+                      fontSize: scale.s(12.5),
+                      color: palette.primaryText,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: palette.hoverFill,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: scale.s(14),
+                        vertical: scale.s(12),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(scale.s(10)),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: IndianBank.values
+                        .map(
+                          (bank) => DropdownMenuItem(
+                            value: bank,
+                            child: Text(
+                              bank.displayName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (bank) {
+                      if (bank != null) _handleBankChange(bank);
+                    },
+                  ),
+                  SizedBox(height: scale.s(18)),
+
+                  // Section 2: Which card model is this?
                   Text(
                     'WHICH CARD MODEL IS THIS?',
                     style: OnyxTypography.mono(
@@ -272,12 +348,7 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                     children: _bankVariants.map((variant) {
                       final isSelected = variant.name == _selectedVariantName;
                       return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedVariantName = variant.name;
-                            _selectedBrand = variant.defaultBrand;
-                          });
-                        },
+                        onTap: () => _handleVariantChange(variant.name),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: EdgeInsets.symmetric(
@@ -299,11 +370,9 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                                 Icon(
                                   Icons.check_circle_rounded,
                                   size: scale.s(13),
-                                  color: isSelected
-                                      ? (widget.isDarkMode
-                                            ? const Color(0xFF111113)
-                                            : const Color(0xFFF8F7F4))
-                                      : palette.primaryText,
+                                  color: widget.isDarkMode
+                                      ? const Color(0xFF111113)
+                                      : const Color(0xFFF8F7F4),
                                 ),
                                 SizedBox(width: scale.s(6)),
                               ],
@@ -329,65 +398,141 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                   ),
                   SizedBox(height: scale.s(18)),
 
-                  // Section 2: Card Number
-                  Text(
-                    'CARD NUMBER',
-                    style: OnyxTypography.mono(
-                      fontSize: scale.s(10),
-                      fontWeight: FontWeight.w600,
-                      color: palette.mutedText,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  SizedBox(height: scale.s(6)),
-                  TextFormField(
-                    controller: _cardNumberController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(16),
-                      _CardNumberFormatter(),
+                  // Section 3: Network + Last four digits
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CARD NETWORK',
+                              style: OnyxTypography.mono(
+                                fontSize: scale.s(9.5),
+                                color: palette.mutedText,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                            SizedBox(height: scale.s(6)),
+                            DropdownButtonFormField<CardSupplier>(
+                              key: ValueKey(
+                                'network-${_selectedBrand.name}-$_selectedVariantName',
+                              ),
+                              initialValue: _selectedBrand,
+                              isExpanded: true,
+                              dropdownColor: palette.cardSurface,
+                              style: OnyxTypography.sans(
+                                fontSize: scale.s(12.5),
+                                fontWeight: FontWeight.w600,
+                                color: palette.primaryText,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: palette.hoverFill,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: scale.s(12),
+                                  vertical: scale.s(10),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    scale.s(10),
+                                  ),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              items: CardSupplier.values
+                                  .map(
+                                    (brand) => DropdownMenuItem(
+                                      value: brand,
+                                      child: Text(
+                                        brand.label,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (brand) {
+                                if (brand != null) {
+                                  setState(() => _selectedBrand = brand);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: scale.s(10)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CARD LAST 4 DIGITS',
+                              style: OnyxTypography.mono(
+                                fontSize: scale.s(9.5),
+                                color: palette.mutedText,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                            SizedBox(height: scale.s(6)),
+                            TextFormField(
+                              controller: _lastFourController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                              style: OnyxTypography.mono(
+                                fontSize: scale.s(14),
+                                fontWeight: FontWeight.w600,
+                                color: palette.primaryText,
+                                letterSpacing: 1.5,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: palette.hoverFill,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: scale.s(14),
+                                  vertical: scale.s(12),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    scale.s(10),
+                                  ),
+                                  borderSide: BorderSide.none,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.credit_card_rounded,
+                                  size: scale.s(18),
+                                  color: palette.mutedText,
+                                ),
+                                hintText: '8824',
+                                hintStyle: OnyxTypography.mono(
+                                  fontSize: scale.s(13),
+                                  color: palette.mutedText.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              validator: (v) {
+                                final digits = (v ?? '').replaceAll(
+                                  RegExp(r'\D'),
+                                  '',
+                                );
+                                if (digits.length != 4) {
+                                  return 'Enter the last 4 digits';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    style: OnyxTypography.mono(
-                      fontSize: scale.s(14),
-                      fontWeight: FontWeight.w600,
-                      color: palette.primaryText,
-                      letterSpacing: 1.5,
-                    ),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: palette.hoverFill,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: scale.s(14),
-                        vertical: scale.s(12),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(scale.s(10)),
-                        borderSide: BorderSide.none,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.credit_card_rounded,
-                        size: scale.s(18),
-                        color: palette.mutedText,
-                      ),
-                      hintText: '4532 8920 4421 $last4',
-                      hintStyle: OnyxTypography.mono(
-                        fontSize: scale.s(13),
-                        color: palette.mutedText.withValues(alpha: 0.5),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    validator: (v) {
-                      final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                      if (digits.length < 4) {
-                        return 'Card number must have at least 4 digits';
-                      }
-                      return null;
-                    },
                   ),
                   SizedBox(height: scale.s(16)),
 
-                  // Section 3: Cardholder Name & Limit Row
+                  // Section 4: Cardholder Name & Limit Row
                   Row(
                     children: [
                       Expanded(
@@ -424,7 +569,7 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                                   ),
                                   borderSide: BorderSide.none,
                                 ),
-                                hintText: 'ARJUN SHARMA',
+                                hintText: 'CARDHOLDER',
                               ),
                             ),
                           ],
@@ -511,26 +656,6 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text.replaceAll(' ', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(text[i]);
-    }
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

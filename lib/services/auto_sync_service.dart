@@ -8,7 +8,6 @@ import '../integrations/gmail/oauth_service.dart';
 import '../integrations/sms/sms_parser.dart';
 import '../integrations/sms/sms_platform.dart';
 import '../models/financial_models.dart';
-import '../utils/card_helpers.dart';
 
 class SyncResult {
   final List<TransactionModel> transactions;
@@ -110,47 +109,32 @@ class AutoSyncService {
   Future<UserProfileModel?> connectGoogleAccount() async {
     try {
       final tokens = await _googleAuth.connect();
-      final profile = await fetchGoogleUserProfile(tokens.accessToken);
-      return profile;
-    } catch (e) {
-      // In development or when OAuth client isn't configured in Google Cloud,
-      // return a graceful connected profile so the UI functions seamlessly.
-      return const UserProfileModel(
-        name: 'Arjun Sharma',
-        email: 'arjun.sharma@gmail.com',
-        photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-        isEmailConnected: true,
-        isSmsGranted: true,
-        isNotificationsGranted: true,
-      );
+      return await fetchGoogleUserProfile(tokens.accessToken);
+    } catch (_) {
+      // OAuth is optional. Never invent a profile when the real Google flow is
+      // unavailable; the caller keeps the user in the unconnected state.
+      return null;
     }
   }
 
   /// Fetches Google User Profile (Name, Email, Profile Photo).
   Future<UserProfileModel> fetchGoogleUserProfile(String accessToken) async {
-    try {
-      final response = await _httpClient.get(
-        Uri.parse('https://www.googleapis.com/oauth2/v3/userinfo'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+    final response = await _httpClient.get(
+      Uri.parse('https://www.googleapis.com/oauth2/v3/userinfo'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
-        return UserProfileModel(
-          name: data['name'] as String? ?? 'Cardholder',
-          email: data['email'] as String? ?? 'connected@gmail.com',
-          photoUrl: data['picture'] as String?,
-          isEmailConnected: true,
-          lastSyncedAt: DateTime.now(),
-        );
-      }
-    } catch (_) {}
+    if (response.statusCode != 200) {
+      throw StateError('Google profile could not be loaded.');
+    }
 
-    return const UserProfileModel(
-      name: 'Arjun Sharma',
-      email: 'arjun.sharma@gmail.com',
-      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    return UserProfileModel(
+      name: data['name'] as String? ?? '',
+      email: data['email'] as String?,
+      photoUrl: data['picture'] as String?,
       isEmailConnected: true,
+      lastSyncedAt: DateTime.now(),
     );
   }
 
@@ -160,9 +144,7 @@ class AutoSyncService {
   }) async {
     final now = DateTime.now();
     final oneMonthAgo = now.subtract(const Duration(days: 30));
-    final last4 = card.maskedNumber.length >= 4
-        ? card.maskedNumber.substring(card.maskedNumber.length - 4)
-        : '8824';
+    final last4 = card.lastFour;
 
     final foundTransactions = <TransactionModel>[];
     bool readFromNativeSms = false;
@@ -215,14 +197,6 @@ class AutoSyncService {
       }
     } catch (_) {}
 
-    // 2. If no native SMS found (e.g. running in sandbox/emulator or no bank SMS yet),
-    // automatically generate the authentic 30-day statement & transaction history for this card.
-    if (foundTransactions.isEmpty) {
-      foundTransactions.addAll(
-        _generateSyntheticLastMonthTransactions(card, last4),
-      );
-    }
-
     double totalSpent = 0;
     for (final tx in foundTransactions) {
       if (tx.type == TransactionType.expense) {
@@ -246,11 +220,13 @@ class AutoSyncService {
       monthSpend: totalSpent,
       statementPoints: statementPoints,
       cashbackEarned: cashbackEarned,
-      statementDueDate: '05 ${formatMonthShort(now.month + 1)}',
+      statementDueDate: foundTransactions.isEmpty
+          ? ''
+          : '05 ${formatMonthShort(now.month + 1)}',
       syncedCount: foundTransactions.length,
       sourceDescription: readFromNativeSms
           ? 'Live SMS & Statement Extraction'
-          : '30-Day Bank Statement & SMS Sync',
+          : 'No matching SMS found',
     );
   }
 
@@ -331,7 +307,45 @@ class AutoSyncService {
         senderUpper.contains('AXISBK') ||
         senderUpper.contains('KOTAKB') ||
         senderUpper.contains('INDUSB') ||
-        senderUpper.contains('RBLCRD');
+        senderUpper.contains('RBLCRD') ||
+        senderUpper.contains('IDFC') ||
+        senderUpper.contains('YESBK') ||
+        senderUpper.contains('FEDBK') ||
+        senderUpper.contains('AUBANK') ||
+        senderUpper.contains('BOBCRD') ||
+        senderUpper.contains('PNBCRD') ||
+        senderUpper.contains('CANARA') ||
+        senderUpper.contains('UNIONB') ||
+        senderUpper.contains('BOI') ||
+        senderUpper.contains('CENTBK') ||
+        senderUpper.contains('INDIANB') ||
+        senderUpper.contains('IOB') ||
+        senderUpper.contains('UCOBK') ||
+        senderUpper.contains('MAHABK') ||
+        senderUpper.contains('PSB') ||
+        senderUpper.contains('IDBIBK') ||
+        senderUpper.contains('CUB') ||
+        senderUpper.contains('SIB') ||
+        senderUpper.contains('KVB') ||
+        senderUpper.contains('DCB') ||
+        senderUpper.contains('CSB') ||
+        senderUpper.contains('BANDHAN') ||
+        senderUpper.contains('DBS') ||
+        senderUpper.contains('SCB') ||
+        senderUpper.contains('HSBC') ||
+        senderUpper.contains('CITI') ||
+        senderUpper.contains('AMEX') ||
+        senderUpper.contains('SBM') ||
+        senderUpper.contains('EQUITAS') ||
+        senderUpper.contains('UJJIVAN') ||
+        senderUpper.contains('JANA') ||
+        senderUpper.contains('ESAF') ||
+        senderUpper.contains('SURYODAY') ||
+        senderUpper.contains('UTKARSH') ||
+        senderUpper.contains('CAPITAL') ||
+        senderUpper.contains('NESFB') ||
+        senderUpper.contains('UNITY') ||
+        senderUpper.contains('SHIVALIK');
 
     final hasCardContext =
         _creditCardContextRegex.hasMatch(body) ||
@@ -344,6 +358,7 @@ class AutoSyncService {
   static IndianBank? detectBank(String sender, String body) {
     final s = sender.toUpperCase();
     final b = body.toLowerCase();
+
     if (s.contains('HDFC') || b.contains('hdfc')) {
       return IndianBank.hdfc;
     }
@@ -356,7 +371,7 @@ class AutoSyncService {
         b.contains('state bank')) {
       return IndianBank.sbi;
     }
-    if (s.contains('AXIS') || b.contains('axis')) {
+    if (s.contains('AXIS') || b.contains('axis bank')) {
       return IndianBank.axis;
     }
     if (s.contains('KOTAK') || b.contains('kotak')) {
@@ -368,23 +383,121 @@ class AutoSyncService {
     if (s.contains('IDFC') || b.contains('idfc')) {
       return IndianBank.idfcFirst;
     }
-    if (s.contains('RBL') || b.contains('rbl')) {
+    if (s.contains('RBL') || b.contains('rbl bank')) {
       return IndianBank.rbl;
     }
-    if (s.contains('YES') || b.contains('yes bank')) {
+    if (s.contains('YESBK') || b.contains('yes bank')) {
       return IndianBank.yesBank;
     }
-    if (s.contains('AU') || b.contains('au small')) {
+    if (s.contains('AUBANK') || b.contains('au small')) {
       return IndianBank.auSmallFinance;
     }
-    if (s.contains('FED') || b.contains('federal')) {
+    if (s.contains('FEDBK') || b.contains('federal bank')) {
       return IndianBank.federal;
     }
-    if (s.contains('BOB') || b.contains('baroda')) {
+    if (s.contains('BOBCRD') ||
+        s.contains('BARB') ||
+        b.contains('bank of baroda')) {
       return IndianBank.bob;
     }
-    if (s.contains('PNB') || b.contains('punjab national')) {
+    if (s.contains('PNBCRD') || b.contains('punjab national')) {
       return IndianBank.pnb;
+    }
+    if (s.contains('CANARA') || b.contains('canara bank')) {
+      return IndianBank.canara;
+    }
+    if (s.contains('UNIONB') || b.contains('union bank of india')) {
+      return IndianBank.unionBank;
+    }
+    if (s.contains('BOI') || b.contains('bank of india')) {
+      return IndianBank.bankOfIndia;
+    }
+    if (s.contains('CENTBK') || b.contains('central bank of india')) {
+      return IndianBank.centralBank;
+    }
+    if (s.contains('INDIANB') || b.contains('indian bank')) {
+      return IndianBank.indianBank;
+    }
+    if (s.contains('IOB') || b.contains('indian overseas')) {
+      return IndianBank.indianOverseasBank;
+    }
+    if (s.contains('UCOBK') || b.contains('uco bank')) {
+      return IndianBank.ucoBank;
+    }
+    if (s.contains('MAHABK') || b.contains('bank of maharashtra')) {
+      return IndianBank.bankOfMaharashtra;
+    }
+    if (s.contains('PSB') || b.contains('punjab & sind')) {
+      return IndianBank.punjabAndSindBank;
+    }
+    if (s.contains('IDBI') || b.contains('idbi bank')) {
+      return IndianBank.idbi;
+    }
+    if (s.contains('CUB') || b.contains('city union bank')) {
+      return IndianBank.cityUnionBank;
+    }
+    if (s.contains('SIB') || b.contains('south indian bank')) {
+      return IndianBank.southIndianBank;
+    }
+    if (s.contains('KVB') || b.contains('karur vysya')) {
+      return IndianBank.karurVysyaBank;
+    }
+    if (s.contains('DCB') || b.contains('dcb bank')) {
+      return IndianBank.dcb;
+    }
+    if (s.contains('CSB') || b.contains('csb bank')) {
+      return IndianBank.csb;
+    }
+    if (s.contains('BANDHAN') || b.contains('bandhan bank')) {
+      return IndianBank.bandhan;
+    }
+    if (s.contains('DBS') || b.contains('dbs bank')) {
+      return IndianBank.dbs;
+    }
+    if (s.contains('SCB') || b.contains('standard chartered')) {
+      return IndianBank.standardChartered;
+    }
+    if (s.contains('HSBC') || b.contains('hsbc')) {
+      return IndianBank.hsbc;
+    }
+    if (s.contains('CITI') || b.contains('citibank')) {
+      return IndianBank.citibank;
+    }
+    if (s.contains('AMEX') || b.contains('american express')) {
+      return IndianBank.americanExpress;
+    }
+    if (s.contains('SBM') || b.contains('sbm bank')) {
+      return IndianBank.sbm;
+    }
+    if (s.contains('EQUITAS') || b.contains('equitas')) {
+      return IndianBank.equitas;
+    }
+    if (s.contains('UJJIVAN') || b.contains('ujjivan')) {
+      return IndianBank.ujjivan;
+    }
+    if (s.contains('JANA') || b.contains('jana small finance')) {
+      return IndianBank.jana;
+    }
+    if (s.contains('ESAF') || b.contains('esaf')) {
+      return IndianBank.esaf;
+    }
+    if (s.contains('SURYODAY') || b.contains('suryoday')) {
+      return IndianBank.suryoday;
+    }
+    if (s.contains('UTKARSH') || b.contains('utkarsh')) {
+      return IndianBank.utkarsh;
+    }
+    if (s.contains('CAPITAL') || b.contains('capital small finance')) {
+      return IndianBank.capitalSmallFinance;
+    }
+    if (s.contains('NESFB') || b.contains('north east small finance')) {
+      return IndianBank.northEastSmallFinance;
+    }
+    if (s.contains('UNITY') || b.contains('unity small finance')) {
+      return IndianBank.unitySmallFinance;
+    }
+    if (s.contains('SHIVALIK') || b.contains('shivalik')) {
+      return IndianBank.shivalikSmallFinance;
     }
     return null;
   }
@@ -458,11 +571,6 @@ class AutoSyncService {
       }
     } catch (_) {}
 
-    // When running in sandbox or if inbox has no bank messages, use synthetic messages
-    if (rawMessages.isEmpty) {
-      rawMessages.addAll(_generateSyntheticInboxMessages());
-    }
-
     final seenMessageIds = <String>{};
     final seenFingerprints = <String>{};
     int duplicatesIgnored = 0;
@@ -508,12 +616,18 @@ class AutoSyncService {
     const parser = GenericSmsParser();
 
     for (final msg in validMessages) {
-      final bank = detectBank(msg.sender, msg.body) ?? IndianBank.hdfc;
-      final last4 = detectLast4(msg.body) ?? '5168';
+      final bank = detectBank(msg.sender, msg.body) ?? IndianBank.other;
       final brand = detectBrand(msg.body);
-      final key = '${bank.name}_$last4';
-
       final parsedList = parser.parse(msg, bankHint: bank.displayName);
+
+      String? last4 = detectLast4(msg.body);
+      for (final parsed in parsedList) {
+        last4 ??= parsed.cardLastFour;
+      }
+      if (last4 == null) continue;
+      final resolvedLast4 = last4;
+
+      final key = '${bank.name}_$resolvedLast4';
       for (final parsed in parsedList) {
         final amountRupees = parsed.amountMinor / 100.0;
         final ref =
@@ -522,9 +636,12 @@ class AutoSyncService {
 
         final agg = detectedCardMap.putIfAbsent(
           key,
-          () => _CardAggregation(bank: bank, last4: last4, brand: brand),
+          () =>
+              _CardAggregation(bank: bank, last4: resolvedLast4, brand: brand),
         );
-        agg.totalSpent += amountRupees;
+        if (parsed.transactionType.isDebit) {
+          agg.totalSpent += amountRupees;
+        }
         agg.txCount++;
 
         parsedTransactions.add(
@@ -538,7 +655,7 @@ class AutoSyncService {
                 : TransactionType.income,
             date: _formatShortDate(parsed.transactionDate),
             time: '14:30',
-            cardLast4: last4,
+            cardLast4: resolvedLast4,
             cardBank: bank,
             cardBrand: brand,
             merchant: parsed.merchant ?? parsed.description,
@@ -549,35 +666,29 @@ class AutoSyncService {
       }
     }
 
-    // Build newly detected CreditCardModel objects
+    // Build newly detected CreditCardModel objects. The user completes the bank,
+    // variant, network and limit in the completion dialog; nothing is invented
+    // here beyond the details actually seen in the SMS.
     final addedCards = <CreditCardModel>[];
     for (final agg in detectedCardMap.values) {
       final alreadyExists = currentCards.any(
-        (c) => c.bankName == agg.bank && c.maskedNumber.endsWith(agg.last4),
+        (c) => c.bankName == agg.bank && c.lastFour == agg.last4,
       );
       if (!alreadyExists) {
-        final variants = bankCardVariants[agg.bank] ?? [];
-        final defaultVariant = variants.isNotEmpty
-            ? variants.first.name
-            : 'Credit Card';
-
         final newCard = CreditCardModel(
           id: 'card-detected-${agg.bank.name}-${agg.last4}',
           bankName: agg.bank,
           holderName: userProfile.name.trim().isNotEmpty
               ? userProfile.name.toUpperCase()
               : 'CARDHOLDER',
-          cardNumber: '•••• •••• •••• ${agg.last4}',
           maskedNumber: '•••• ${agg.last4}',
-          expiry: '12/29',
-          cvv: '•••',
-          balance: agg.totalSpent > 0 ? agg.totalSpent : 32150,
-          limit: 300000,
+          expiry: '',
+          balance: agg.totalSpent,
+          limit: 0,
           brand: agg.brand,
-          cardTier: defaultVariant,
-          dailyLimit: 75000,
-          isNeedsCompletion:
-              true, // Needs user to pick model & enter card number
+          cardTier: 'Credit Card',
+          dailyLimit: 0,
+          isNeedsCompletion: true,
         );
         addedCards.add(newCard);
       }
@@ -592,82 +703,6 @@ class AutoSyncService {
       billRemindersIgnored: billRemindersIgnored,
       readFromNativeSms: readFromNativeSms,
     );
-  }
-
-  List<SmsMessage> _generateSyntheticInboxMessages() {
-    final now = DateTime.now();
-    return [
-      // 1. Valid HDFC Credit Card spend
-      SmsMessage(
-        id: 'sms-syn-1',
-        sender: 'VM-HDFCBK',
-        body: 'INR 480.00 spent on your HDFC Bank Credit Card ending 5168 at Starbucks Reserve on 18-Nov-2026. Avl Lmt: INR 3,31,550.',
-        receivedAt: now.subtract(const Duration(hours: 3)),
-      ),
-      // 2. Valid HDFC Credit Card spend
-      SmsMessage(
-        id: 'sms-syn-2',
-        sender: 'VM-HDFCBK',
-        body: 'Alert: INR 1,280.00 spent on HDFC Bank Credit Card ending 5168 at Swiggy Instamart on 17-Nov-2026. Ref: SWIG-8842.',
-        receivedAt: now.subtract(const Duration(days: 1)),
-      ),
-      // 3. Duplicate of message #2 (Same body & sender) -> Must be deduplicated!
-      SmsMessage(
-        id: 'sms-syn-3',
-        sender: 'VM-HDFCBK',
-        body: 'Alert: INR 1,280.00 spent on HDFC Bank Credit Card ending 5168 at Swiggy Instamart on 17-Nov-2026. Ref: SWIG-8842.',
-        receivedAt: now.subtract(const Duration(days: 1)),
-      ),
-      // 4. Bill Payment Reminder -> Must be filtered out!
-      SmsMessage(
-        id: 'sms-syn-4',
-        sender: 'VM-HDFCBK',
-        body: 'Payment Due Reminder: Total amount due on your HDFC Bank Credit Card ending 5168 is Rs 68,450.00. Due date is 01-Dec-2026. Please pay your bill to avoid late fee.',
-        receivedAt: now.subtract(const Duration(days: 2)),
-      ),
-      // 5. Valid ICICI Credit Card spend
-      SmsMessage(
-        id: 'sms-syn-5',
-        sender: 'AD-ICICIB',
-        body: 'Dear Customer, your ICICI Bank Credit Card ending 8824 has been used for purchase of INR 2,499.00 at Amazon India on 16-Nov-2026.',
-        receivedAt: now.subtract(const Duration(days: 2)),
-      ),
-      // 6. Bill Generated Reminder -> Must be filtered out!
-      SmsMessage(
-        id: 'sms-syn-6',
-        sender: 'AD-ICICIB',
-        body: 'Bill generated for ICICI Bank Credit Card xx8824. Minimum amount due: INR 1,200.00, Total due: INR 24,150.00. Due date: 28-Nov-2026.',
-        receivedAt: now.subtract(const Duration(days: 3)),
-      ),
-      // 7. Valid SBI Credit Card spend
-      SmsMessage(
-        id: 'sms-syn-7',
-        sender: 'CP-SBICRD',
-        body: 'Txn of INR 649.00 on SBI Credit Card ending 3011 at Netflix India on 15-Nov-2026. Info: NFLX-6610.',
-        receivedAt: now.subtract(const Duration(days: 3)),
-      ),
-      // 8. Debit Card / Bank Account Debit -> Must be filtered out!
-      SmsMessage(
-        id: 'sms-syn-8',
-        sender: 'VM-HDFCBK',
-        body: 'INR 2,500.00 debited from A/c xx9102 using Debit Card at HDFC ATM Bandra on 14-Nov-2026.',
-        receivedAt: now.subtract(const Duration(days: 4)),
-      ),
-      // 9. OTP Message -> Must be filtered out!
-      SmsMessage(
-        id: 'sms-syn-9',
-        sender: 'VM-HDFCBK',
-        body: '492019 is your One Time Password (OTP) for online payment. Do not share OTP with anyone.',
-        receivedAt: now.subtract(const Duration(days: 5)),
-      ),
-      // 10. Valid Axis Bank Credit Card spend
-      SmsMessage(
-        id: 'sms-syn-10',
-        sender: 'AXISBK',
-        body: 'INR 950.00 spent on your Axis Bank Credit Card ending 1928 at Apollo Pharmacy on 13-Nov-2026.',
-        receivedAt: now.subtract(const Duration(days: 5)),
-      ),
-    ];
   }
 
   static String _categorize(String desc) {
@@ -736,113 +771,5 @@ class AutoSyncService {
     ];
     final m = ((month - 1) % 12) + 1;
     return months[m - 1];
-  }
-
-  List<TransactionModel> _generateSyntheticLastMonthTransactions(
-    CreditCardModel card,
-    String last4,
-  ) {
-    final now = DateTime.now();
-    return [
-      TransactionModel(
-        id: 'tx-sync-1-${card.id}',
-        title: 'Swiggy Instamart Order',
-        category: 'Food & Dining',
-        amount: 840,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 2))),
-        time: '19:42',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Bundl Technologies Pvt Ltd',
-        referenceId: 'SWIG-8842-IN',
-        isUpi: card.brand == CardSupplier.rupay,
-      ),
-      TransactionModel(
-        id: 'tx-sync-2-${card.id}',
-        title: 'Amazon India Shopping',
-        category: 'Shopping',
-        amount: 2499,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 5))),
-        time: '14:15',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Amazon Seller Services Pvt Ltd',
-        referenceId: 'AMZ-5591-IN',
-      ),
-      TransactionModel(
-        id: 'tx-sync-3-${card.id}',
-        title: 'Uber Premier BKC',
-        category: 'Transport',
-        amount: 520,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 8))),
-        time: '09:10',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Uber India Systems Pvt Ltd',
-        referenceId: 'UBER-1029-IN',
-      ),
-      TransactionModel(
-        id: 'tx-sync-4-${card.id}',
-        title: 'Starbucks Reserve Cafe',
-        category: 'Food & Dining',
-        amount: 680,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 12))),
-        time: '16:30',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Tata Starbucks Pvt Ltd',
-        referenceId: 'SBUX-9482-IN',
-      ),
-      TransactionModel(
-        id: 'tx-sync-5-${card.id}',
-        title: 'Apollo Pharmacy Bandra',
-        category: 'Health',
-        amount: 950,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 16))),
-        time: '20:05',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Apollo Hospitals Enterprise Ltd',
-        referenceId: 'APO-3829-IN',
-      ),
-      TransactionModel(
-        id: 'tx-sync-6-${card.id}',
-        title: 'Netflix Premium Subscription',
-        category: 'Entertainment',
-        amount: 649,
-        type: TransactionType.expense,
-        date: _formatShortDate(now.subtract(const Duration(days: 22))),
-        time: '04:00',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: 'Netflix Entertainment Services India',
-        referenceId: 'NFLX-6610-IN',
-      ),
-      TransactionModel(
-        id: 'tx-sync-7-${card.id}',
-        title: 'Statement Bill Auto-Pay Cashback',
-        category: 'Income',
-        amount: 1250,
-        type: TransactionType.income,
-        date: _formatShortDate(now.subtract(const Duration(days: 25))),
-        time: '11:00',
-        cardLast4: last4,
-        cardBank: card.bankName,
-        cardBrand: card.brand,
-        merchant: '${card.bankName.displayName} Direct Cashback',
-        referenceId: 'CB-9941-IN',
-      ),
-    ];
   }
 }

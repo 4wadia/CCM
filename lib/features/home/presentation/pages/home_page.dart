@@ -855,7 +855,7 @@ class _OnyxHeroHeaderState extends State<_OnyxHeroHeader> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  'AS',
+                  '•',
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
@@ -868,7 +868,7 @@ class _OnyxHeroHeaderState extends State<_OnyxHeroHeader> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Arjun Sharma',
+                  'Cardholder',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

@@ -1,28 +1,115 @@
 enum ScreenId { home, cards, profile }
 
+/// Curated list of banks and card issuers that offer credit cards in India.
+///
+/// Product names and issuers change regularly, so the list is intentionally
+/// maintained as a catalogue rather than claimed to be exhaustive. The
+/// [other] entry keeps the add/complete flow usable for a newly launched bank
+/// or a co-branded issuer that is not listed yet.
 enum IndianBank {
+  // Major private and public-sector issuers.
   hdfc('HDFC Bank'),
   icici('ICICI Bank'),
   sbi('SBI Card'),
   axis('Axis Bank'),
   kotak('Kotak Mahindra Bank'),
   indusInd('IndusInd Bank'),
-  bob('Bank of Baroda'),
-  pnb('Punjab National Bank'),
   idfcFirst('IDFC FIRST Bank'),
   rbl('RBL Bank'),
   yesBank('Yes Bank'),
+  federal('Federal Bank'),
   auSmallFinance('AU Small Finance Bank'),
-  federal('Federal Bank');
+  bob('Bank of Baroda'),
+  pnb('Punjab National Bank'),
+  canara('Canara Bank'),
+  unionBank('Union Bank of India'),
+  bankOfIndia('Bank of India'),
+  centralBank('Central Bank of India'),
+  indianBank('Indian Bank'),
+  indianOverseasBank('Indian Overseas Bank'),
+  ucoBank('UCO Bank'),
+  bankOfMaharashtra('Bank of Maharashtra'),
+  punjabAndSindBank('Punjab & Sind Bank'),
+  idbi('IDBI Bank'),
+  cityUnionBank('City Union Bank'),
+  southIndianBank('South Indian Bank'),
+  karurVysyaBank('Karur Vysya Bank'),
+  dcb('DCB Bank'),
+  csb('CSB Bank'),
+  bandhan('Bandhan Bank'),
+  dbs('DBS Bank India'),
+  standardChartered('Standard Chartered Bank'),
+  hsbc('HSBC India'),
+  citibank('Citibank India'),
+  americanExpress('American Express'),
+  sbm('SBM Bank India'),
+
+  // Small finance banks.
+  equitas('Equitas Small Finance Bank'),
+  ujjivan('Ujjivan Small Finance Bank'),
+  jana('Jana Small Finance Bank'),
+  esaf('ESAF Small Finance Bank'),
+  suryoday('Suryoday Small Finance Bank'),
+  utkarsh('Utkarsh Small Finance Bank'),
+  capitalSmallFinance('Capital Small Finance Bank'),
+  northEastSmallFinance('North East Small Finance Bank'),
+  unitySmallFinance('Unity Small Finance Bank'),
+  shivalikSmallFinance('Shivalik Small Finance Bank'),
+
+  /// Fallback for a bank or co-branded issuer that is not in the catalogue.
+  other('Other / not listed');
 
   final String displayName;
   const IndianBank(this.displayName);
 
-  String get shortName => displayName
-      .replaceAll(' Mahindra Bank', '')
-      .replaceAll(' Small Finance Bank', '')
-      .replaceAll(' Bank', '')
-      .replaceAll(' Card', '');
+  String get shortName => switch (this) {
+    IndianBank.hdfc => 'HDFC',
+    IndianBank.icici => 'ICICI',
+    IndianBank.sbi => 'SBI',
+    IndianBank.axis => 'Axis',
+    IndianBank.kotak => 'Kotak',
+    IndianBank.indusInd => 'IndusInd',
+    IndianBank.idfcFirst => 'IDFC FIRST',
+    IndianBank.rbl => 'RBL',
+    IndianBank.yesBank => 'YES',
+    IndianBank.federal => 'Federal',
+    IndianBank.auSmallFinance => 'AU',
+    IndianBank.bob => 'BoB',
+    IndianBank.pnb => 'PNB',
+    IndianBank.canara => 'Canara',
+    IndianBank.unionBank => 'Union',
+    IndianBank.bankOfIndia => 'BOI',
+    IndianBank.centralBank => 'Central',
+    IndianBank.indianBank => 'Indian Bank',
+    IndianBank.indianOverseasBank => 'IOB',
+    IndianBank.ucoBank => 'UCO',
+    IndianBank.bankOfMaharashtra => 'MahaBank',
+    IndianBank.punjabAndSindBank => 'PSB',
+    IndianBank.idbi => 'IDBI',
+    IndianBank.cityUnionBank => 'CUB',
+    IndianBank.southIndianBank => 'SIB',
+    IndianBank.karurVysyaBank => 'KVB',
+    IndianBank.dcb => 'DCB',
+    IndianBank.csb => 'CSB',
+    IndianBank.bandhan => 'Bandhan',
+    IndianBank.dbs => 'DBS',
+    IndianBank.standardChartered => 'StanChart',
+    IndianBank.hsbc => 'HSBC',
+    IndianBank.citibank => 'Citi',
+    IndianBank.americanExpress => 'Amex',
+    IndianBank.sbm => 'SBM',
+    IndianBank.equitas => 'Equitas',
+    IndianBank.ujjivan => 'Ujjivan',
+    IndianBank.jana => 'Jana',
+    IndianBank.esaf => 'ESAF',
+    IndianBank.suryoday => 'Suryoday',
+    IndianBank.utkarsh => 'Utkarsh',
+    IndianBank.capitalSmallFinance => 'Capital',
+    IndianBank.northEastSmallFinance => 'NESFB',
+    IndianBank.unitySmallFinance => 'Unity',
+    IndianBank.shivalikSmallFinance => 'Shivalik',
+    IndianBank.other => 'Other',
+  };
 }
 
 enum CardSupplier {
@@ -86,10 +173,14 @@ class CreditCardModel {
   final String id;
   final IndianBank bankName;
   final String holderName;
-  final String cardNumber;
+
+  /// Only the masked form is stored. Full card numbers must never be persisted.
   final String maskedNumber;
+
+  /// Optional expiry exactly as printed on the card. The card security code is
+  /// deliberately not part of the model.
   final String expiry;
-  final String cvv;
+
   final double balance;
   final double limit;
   final CardSupplier brand;
@@ -110,10 +201,8 @@ class CreditCardModel {
     required this.id,
     required this.bankName,
     required this.holderName,
-    required this.cardNumber,
     required this.maskedNumber,
-    required this.expiry,
-    required this.cvv,
+    this.expiry = '',
     required this.balance,
     required this.limit,
     required this.brand,
@@ -131,12 +220,18 @@ class CreditCardModel {
     this.isNeedsCompletion = false,
   });
 
+  String get lastFour {
+    final digits = maskedNumber.replaceAll(RegExp(r'\D'), '');
+    return digits.length >= 4
+        ? digits.substring(digits.length - 4)
+        : digits.padLeft(4, '•');
+  }
+
   CreditCardModel copyWith({
+    IndianBank? bankName,
     String? holderName,
-    String? cardNumber,
     String? maskedNumber,
     String? expiry,
-    String? cvv,
     double? balance,
     double? limit,
     CardSupplier? brand,
@@ -154,12 +249,10 @@ class CreditCardModel {
   }) {
     return CreditCardModel(
       id: id,
-      bankName: bankName,
+      bankName: bankName ?? this.bankName,
       holderName: holderName ?? this.holderName,
-      cardNumber: cardNumber ?? this.cardNumber,
       maskedNumber: maskedNumber ?? this.maskedNumber,
       expiry: expiry ?? this.expiry,
-      cvv: cvv ?? this.cvv,
       balance: balance ?? this.balance,
       limit: limit ?? this.limit,
       brand: brand ?? this.brand,

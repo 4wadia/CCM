@@ -204,6 +204,7 @@ class AuthenticBankLogo extends StatelessWidget {
       IndianBank.yesBank => 'yes',
       IndianBank.auSmallFinance => 'au',
       IndianBank.federal => 'federal',
+      _ => bank.name.toLowerCase(),
     };
   }
 
@@ -620,6 +621,52 @@ class AuthenticBankLogo extends StatelessWidget {
             color: textInk,
             letterSpacing: 0.8,
           ),
+        );
+
+      default:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 17 * scale,
+              height: 17 * scale,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F2937),
+                borderRadius: BorderRadius.circular(3 * scale),
+                border: Border.all(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                  width: 0.8 * scale,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  bank.shortName.isEmpty
+                      ? '?'
+                      : bank.shortName[0].toUpperCase(),
+                  style: OnyxTypography.sans(
+                    fontSize: 9 * scale,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFD4AF37),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 5 * scale),
+            Flexible(
+              child: Text(
+                bank.displayName.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: OnyxTypography.sans(
+                  fontSize: 11 * scale,
+                  fontWeight: FontWeight.w800,
+                  color: textInk,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ],
         );
     }
   }
