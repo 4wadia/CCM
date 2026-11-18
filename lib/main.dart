@@ -27,7 +27,8 @@ void main() {
       50 * 1024 * 1024; // 50 MB
   // Low-end memory optimization: limit decoded image cache to prevent GC pauses
   PaintingBinding.instance.imageCache.maximumSize = 100;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024; // 50 MB
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      50 * 1024 * 1024; // 50 MB
   runApp(const OnyxCardsApp());
 }
 

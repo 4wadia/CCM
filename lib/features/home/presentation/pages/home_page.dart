@@ -1019,7 +1019,7 @@ class _OnyxHeroHeaderState extends State<_OnyxHeroHeader> {
                   amountMinor: widget.totalSpendMinor,
                   currencyCode: widget.currencyCode,
                   style: AppTypography.editorialDisplay(
-                    fontSize: 34,
+                    fontSize: 46,
                     fontWeight: FontWeight.w700,
                     color: isDark
                         ? AppColors.darkTextPrimary
@@ -1031,7 +1031,7 @@ class _OnyxHeroHeaderState extends State<_OnyxHeroHeader> {
                 Text(
                   '••••••••',
                   style: AppTypography.editorialDisplay(
-                    fontSize: 34,
+                    fontSize: 46,
                     fontWeight: FontWeight.w700,
                     color: isDark
                         ? AppColors.darkTextPrimary

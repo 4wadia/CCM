@@ -707,11 +707,11 @@ class _HomeScreenState extends State<HomeScreen>
                       },
                     ),
 
-                    SizedBox(height: scale.s(10)),
+                    SizedBox(height: scale.s(12)),
 
                     // Centered Editorial Stat Block (Luxury Proportion & Balanced Padding)
                     Padding(
-                      padding: EdgeInsets.symmetric(vertical: scale.s(8)),
+                      padding: EdgeInsets.symmetric(vertical: scale.s(12)),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -721,9 +721,9 @@ class _HomeScreenState extends State<HomeScreen>
                               Text(
                                 'TOTAL MONTH SPEND',
                                 style: OnyxTypography.mono(
-                                  fontSize: scale.s(11),
+                                  fontSize: scale.s(13),
                                   color: palette.mutedText,
-                                  letterSpacing: 1.5,
+                                  letterSpacing: 1.6,
                                 ),
                               ),
                               SizedBox(width: scale.s(8)),
@@ -735,15 +735,15 @@ class _HomeScreenState extends State<HomeScreen>
                                   _balanceVisible
                                       ? Icons.visibility_outlined
                                       : Icons.visibility_off_outlined,
-                                  size: scale.s(15),
+                                  size: scale.s(17),
                                   color: palette.primaryText.withValues(
-                                    alpha: 0.55,
+                                    alpha: 0.6,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: scale.s(8)),
+                          SizedBox(height: scale.s(10)),
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
@@ -751,23 +751,23 @@ class _HomeScreenState extends State<HomeScreen>
                                   ? formatINR(totalCombinedSpend)
                                   : '••••••••',
                               style: OnyxTypography.editorial(
-                                fontSize: scale.s(36),
+                                fontSize: scale.s(48),
                                 fontWeight: FontWeight.w600,
                                 height: 1.05,
-                                letterSpacing: -0.6,
+                                letterSpacing: -0.8,
                                 color: palette.primaryText,
                                 tabularFigures: true,
                               ),
                             ),
                           ),
-                          SizedBox(height: scale.s(18)),
+                          SizedBox(height: scale.s(20)),
 
                           // Utilization Progress Track
                           ClipRRect(
                             borderRadius: BorderRadius.circular(999),
                             child: Container(
                               width: double.infinity,
-                              height: scale.s(4),
+                              height: scale.s(6),
                               color: palette.divider,
                               alignment: Alignment.centerLeft,
                               child: AnimatedFractionallySizedBox(
@@ -781,7 +781,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ),
                           ),
-                          SizedBox(height: scale.s(10)),
+                          SizedBox(height: scale.s(12)),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -791,12 +791,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: OnyxTypography.mono(
-                                    fontSize: scale.s(15),
+                                    fontSize: scale.s(16),
                                     fontWeight: FontWeight.w700,
                                     color: palette.primaryText.withValues(
                                       alpha: 0.85,
                                     ),
-                                    letterSpacing: 1.2,
+                                    letterSpacing: 1.3,
                                   ),
                                 ),
                               ),
@@ -805,10 +805,10 @@ class _HomeScreenState extends State<HomeScreen>
                                 '$utilizationPercent% OF ${_balanceVisible ? formatINR(totalCombinedLimit, compact: true).toUpperCase() : '••••'}',
                                 maxLines: 1,
                                 style: OnyxTypography.mono(
-                                  fontSize: scale.s(15),
+                                  fontSize: scale.s(16),
                                   fontWeight: FontWeight.w700,
                                   color: palette.primaryText,
-                                  letterSpacing: 1.1,
+                                  letterSpacing: 1.2,
                                   tabularFigures: true,
                                 ),
                               ),
