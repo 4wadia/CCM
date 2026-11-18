@@ -6,7 +6,7 @@ Download: `credit-card-manager-0.3.0.apk`
 - Version: `0.3.0` (versionCode 4)
 - Min Android: 7.0 (API 24)
 - ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`
-- SHA-256: `075f969d8809c0ade1b2137a898cd7d4ef7586749788d63b91dc533f9c7d4035`
+- SHA-256: `a8656a418b20422d912b6058e3d15a24c4851886ddad974a582ccdc5cac1c3c1`
 
 ## Install
 

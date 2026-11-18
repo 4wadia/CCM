@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/financial_models.dart';
 import '../services/auto_sync_service.dart';
 import '../theme/onyx_theme.dart';
+import 'app_logo.dart';
 
 Future<void> showPermissionOnboardingDialog({
   required BuildContext context,
@@ -157,6 +158,14 @@ class _PermissionOnboardingSheetState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(child: AppLogo(size: scale.s(48))),
+                  SizedBox(height: scale.s(16)),
+
+                  Center(
+                    child: AppLogo(size: scale.s(48)),
+                  ),
+                  SizedBox(height: scale.s(16)),
+
                   // Gold pill badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

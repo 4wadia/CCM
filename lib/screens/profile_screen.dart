@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/financial_models.dart';
 import '../services/auto_sync_service.dart';
 import '../theme/onyx_theme.dart';
+import '../widgets/app_logo.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserProfileModel profile;
@@ -572,6 +573,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+
+          SizedBox(height: scale.s(28)),
+
+          // App Brand & Logo Footer
+          Center(
+            child: Column(
+              children: [
+                AppLogo(size: scale.s(52)),
+                SizedBox(height: scale.s(10)),
+                Text(
+                  'CREDIT CARD MANAGER',
+                  style: OnyxTypography.mono(
+                    fontSize: scale.s(11),
+                    fontWeight: FontWeight.w700,
+                    color: palette.primaryText,
+                    letterSpacing: 2.2,
+                  ),
+                ),
+                SizedBox(height: scale.s(4)),
+                Text(
+                  'VERSION 0.3.0 · LUXURY ONYX EDITION',
+                  style: OnyxTypography.mono(
+                    fontSize: scale.s(9),
+                    color: palette.mutedText,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: scale.s(32)),
         ],
       ),
     );

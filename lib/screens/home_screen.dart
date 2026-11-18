@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/financial_models.dart';
 import '../theme/onyx_theme.dart';
 import '../utils/format_currency.dart';
+import '../widgets/app_logo.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<CreditCardModel> cards;
@@ -218,74 +219,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                           error,
                                                           stackTrace,
                                                         ) => Center(
-                                                          child: Text(
-                                                            (widget
-                                                                        .profile
-                                                                        ?.name
-                                                                        .trim()
-                                                                        .isNotEmpty ??
-                                                                    false)
-                                                                ? widget
-                                                                      .profile!
-                                                                      .name
-                                                                      .trim()
-                                                                      .split(
-                                                                        RegExp(
-                                                                          r'\s+',
-                                                                        ),
-                                                                      )
-                                                                      .map(
-                                                                        (e) =>
-                                                                            e.isNotEmpty
-                                                                            ? e[0].toUpperCase()
-                                                                            : '',
-                                                                      )
-                                                                      .take(2)
-                                                                      .join()
-                                                                : 'AS',
-                                                            style: OnyxTypography.mono(
-                                                              fontSize: scale.s(
-                                                                12.5,
-                                                              ),
-                                                              color: palette
-                                                                  .primaryText,
-                                                              letterSpacing:
-                                                                  0.8,
-                                                            ),
+                                                          child: AppLogo(
+                                                            size: scale.s(32),
+                                                            withSquircle: false,
                                                           ),
                                                         ),
                                                   )
                                                 : Center(
-                                                    child: Text(
-                                                      (widget.profile?.name
-                                                                  .trim()
-                                                                  .isNotEmpty ??
-                                                              false)
-                                                          ? widget.profile!.name
-                                                                .trim()
-                                                                .split(
-                                                                  RegExp(
-                                                                    r'\s+',
-                                                                  ),
-                                                                )
-                                                                .map(
-                                                                  (e) =>
-                                                                      e.isNotEmpty
-                                                                      ? e[0].toUpperCase()
-                                                                      : '',
-                                                                )
-                                                                .take(2)
-                                                                .join()
-                                                          : 'AS',
-                                                      style:
-                                                          OnyxTypography.mono(
-                                                            fontSize: scale.s(
-                                                              12.5,
-                                                            ),
-                                                            color: palette
-                                                                .primaryText,
-                                                            letterSpacing: 0.8,
-                                                          ),
+                                                    child: AppLogo(
+                                                      size: scale.s(32),
+                                                      withSquircle: false,
                                                     ),
                                                   ),
                                           ),
