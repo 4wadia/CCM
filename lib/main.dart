@@ -234,146 +234,159 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       },
       home: Builder(
         builder: (innerContext) {
-          return Scaffold(
-            backgroundColor: palette.background,
-            body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 412),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          switchInCurve: const Cubic(0.22, 1.0, 0.36, 1.0),
-                          switchOutCurve: Curves.easeIn,
-                          transitionBuilder: (child, anim) {
-                            return FadeTransition(
-                              opacity: anim,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, 0.015),
-                                  end: Offset.zero,
-                                ).animate(anim),
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: _selectedCardForManage != null
-                              ? ManageCardScreen(
-                                  key: ValueKey(
-                                    'screen-manage-${_selectedCardForManage!.id}',
-                                  ),
-                                  card: _selectedCardForManage!,
-                                  transactions: _transactions,
-                                  onBack: () => setState(
-                                    () => _selectedCardForManage = null,
-                                  ),
-                                  onCompleteCard: _promptCompleteCard,
-                                  isDarkMode: _isDarkMode,
-                                )
-                              : _activeTab == ScreenId.cards
-                              ? CardsScreen(
-                                  key: const ValueKey('screen-cards'),
-                                  cards: _cards,
-                                  onOpenNewCardModal: () => showIssueCardDialog(
-                                    context: innerContext,
+          return PopScope(
+            // Android back should return to Home from Cards, Profile or a
+            // managed card before it is allowed to close the app.
+            canPop:
+                _activeTab == ScreenId.home && _selectedCardForManage == null,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) return;
+              _handleBackToHome();
+            },
+            child: Scaffold(
+              backgroundColor: palette.background,
+              body: SafeArea(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 412),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            switchInCurve: const Cubic(0.22, 1.0, 0.36, 1.0),
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, anim) {
+                              return FadeTransition(
+                                opacity: anim,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.015),
+                                    end: Offset.zero,
+                                  ).animate(anim),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: _selectedCardForManage != null
+                                ? ManageCardScreen(
+                                    key: ValueKey(
+                                      'screen-manage-${_selectedCardForManage!.id}',
+                                    ),
+                                    card: _selectedCardForManage!,
+                                    transactions: _transactions,
+                                    onBack: () => setState(
+                                      () => _selectedCardForManage = null,
+                                    ),
+                                    onCompleteCard: _promptCompleteCard,
                                     isDarkMode: _isDarkMode,
-                                    holderName: _userProfile.name,
-                                    onAddCard: (card) =>
-                                        _handleAddCard(innerContext, card),
+                                  )
+                                : _activeTab == ScreenId.cards
+                                ? CardsScreen(
+                                    key: const ValueKey('screen-cards'),
+                                    cards: _cards,
+                                    onOpenNewCardModal: () =>
+                                        showIssueCardDialog(
+                                          context: innerContext,
+                                          isDarkMode: _isDarkMode,
+                                          holderName: _userProfile.name,
+                                          onAddCard: (card) => _handleAddCard(
+                                            innerContext,
+                                            card,
+                                          ),
+                                        ),
+                                    onSelectCard: (card) => setState(
+                                      () => _selectedCardForManage = card,
+                                    ),
+                                    onCompleteCard: _promptCompleteCard,
+                                    isDarkMode: _isDarkMode,
+                                  )
+                                : _activeTab == ScreenId.profile
+                                ? ProfileScreen(
+                                    key: const ValueKey('screen-profile'),
+                                    profile: _userProfile,
+                                    onUpdateProfile: (updated) =>
+                                        setState(() => _userProfile = updated),
+                                    cards: _cards,
+                                    transactions: _transactions,
+                                    isDarkMode: _isDarkMode,
+                                    onBack: () => setState(
+                                      () => _activeTab = ScreenId.home,
+                                    ),
+                                  )
+                                : HomeScreen(
+                                    key: const ValueKey('screen-home'),
+                                    cards: _cards,
+                                    transactions: _transactions,
+                                    profile: _userProfile,
+                                    onOpenProfile: () => setState(
+                                      () => _activeTab = ScreenId.profile,
+                                    ),
+                                    onSelectTransaction: (tx) =>
+                                        showTransactionDetailSheet(
+                                          context: innerContext,
+                                          transaction: tx,
+                                          isDarkMode: _isDarkMode,
+                                        ),
+                                    isDarkMode: _isDarkMode,
+                                    onToggleDarkMode: () => setState(
+                                      () => _isDarkMode = !_isDarkMode,
+                                    ),
                                   ),
-                                  onSelectCard: (card) => setState(
-                                    () => _selectedCardForManage = card,
-                                  ),
-                                  onCompleteCard: _promptCompleteCard,
-                                  isDarkMode: _isDarkMode,
-                                )
-                              : _activeTab == ScreenId.profile
-                              ? ProfileScreen(
-                                  key: const ValueKey('screen-profile'),
-                                  profile: _userProfile,
-                                  onUpdateProfile: (updated) =>
-                                      setState(() => _userProfile = updated),
-                                  cards: _cards,
-                                  transactions: _transactions,
-                                  isDarkMode: _isDarkMode,
-                                  onBack: () => setState(
-                                    () => _activeTab = ScreenId.home,
-                                  ),
-                                )
-                              : HomeScreen(
-                                  key: const ValueKey('screen-home'),
-                                  cards: _cards,
-                                  transactions: _transactions,
-                                  profile: _userProfile,
-                                  onOpenProfile: () => setState(
-                                    () => _activeTab = ScreenId.profile,
-                                  ),
-                                  onSelectTransaction: (tx) =>
-                                      showTransactionDetailSheet(
-                                        context: innerContext,
-                                        transaction: tx,
-                                        isDarkMode: _isDarkMode,
-                                      ),
-                                  isDarkMode: _isDarkMode,
-                                  onToggleDarkMode: () => setState(
-                                    () => _isDarkMode = !_isDarkMode,
-                                  ),
-                                ),
-                        ),
-                      ),
-
-                      // Floating Pill Action Switcher
-                      if (_selectedCardForManage == null)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: OnyxScale.of(innerContext).s(16),
-                          child: Center(
-                            child: FloatingPillNav(
-                              activeTab: _activeTab,
-                              isDarkMode: _isDarkMode,
-                              onSelectTab: (tab) => setState(() {
-                                _selectedCardForManage = null;
-                                _activeTab = tab;
-                              }),
-                            ),
                           ),
                         ),
 
-                      // Subtle Top Toast Pill
-                      if (_statusPillMessage != null)
-                        Positioned(
-                          top: 8,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
+                        // Floating Pill Action Switcher
+                        if (_selectedCardForManage == null)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: OnyxScale.of(innerContext).s(16),
+                            child: Center(
+                              child: FloatingPillNav(
+                                activeTab: _activeTab,
+                                isDarkMode: _isDarkMode,
+                                onSelectTab: (tab) => setState(() {
+                                  _selectedCardForManage = null;
+                                  _activeTab = tab;
+                                }),
                               ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF18181B),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: const Color(0xFFD4AF37)
-                                      .withValues(alpha: 0.45),
+                            ),
+                          ),
+
+                        // Subtle Top Toast Pill
+                        if (_statusPillMessage != null)
+                          Positioned(
+                            top: 8,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
                                 ),
-                              ),
-                              child: Text(
-                                _statusPillMessage!,
-                                style: OnyxTypography.mono(
-                                  fontSize: 10,
-                                  color: const Color(0xFFF8F7F4),
-                                  letterSpacing: 0.6,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF18181B),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(0xFFD4AF37)
+                                        .withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                child: Text(
+                                  _statusPillMessage!,
+                                  style: OnyxTypography.mono(
+                                    fontSize: 10,
+                                    color: const Color(0xFFF8F7F4),
+                                    letterSpacing: 0.6,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -382,5 +395,14 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
         },
       ),
     );
+  }
+
+  void _handleBackToHome() {
+    if (!mounted) return;
+    if (_activeTab == ScreenId.home && _selectedCardForManage == null) return;
+    setState(() {
+      _selectedCardForManage = null;
+      _activeTab = ScreenId.home;
+    });
   }
 }

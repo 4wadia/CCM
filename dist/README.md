@@ -1,12 +1,12 @@
 # Credit Card Manager — Android APK
 
-Download: `credit-card-manager-0.3.1.apk`
+Download: `credit-card-manager-0.3.2.apk`
 
 - Package: `app.creditcardmanager`
-- Version: `0.3.1` (versionCode 5)
+- Version: `0.3.2` (versionCode 6)
 - Min Android: 7.0 (API 24)
 - ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`
-- SHA-256: `7994a465a26853098411877e07c3ff43f94d31b156e8797472395bf142ea35b7`
+- SHA-256: `a750c1e4d5116b1b8f0f70c7fcdcffbe0cf4d918b5bf51e3eb6d9614cd2e3621`
 
 ## Install
 
@@ -18,6 +18,8 @@ Download: `credit-card-manager-0.3.1.apk`
 This build is signed with the Android debug certificate. It is installable by sideloading but is **not** Play Store-ready.
 
 Fresh installs start with no cards and no transactions. Cards and transactions are created only from SMS/statements the user allows the app to read or from manual entry. The add/complete card flow includes a curated catalogue of 46 Indian banks and card issuers with card-model and network selection, plus an **Other card** fallback. Only the last four digits are stored; full card numbers and CVVs are never requested or saved.
+
+On Android, the back gesture or button returns to Home from Cards, Profile, or a managed card before it can close the app.
 
 ## Gmail
 

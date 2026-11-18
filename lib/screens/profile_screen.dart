@@ -294,54 +294,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: scale.s(36),
-                          height: scale.s(36),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: profile.isEmailConnected
-                                ? const Color(0xFF10B981)
-                                      .withValues(alpha: 0.15)
-                                : palette.hoverFill,
-                          ),
-                          child: Icon(
-                            Icons.alternate_email_rounded,
-                            size: scale.s(18),
-                            color: profile.isEmailConnected
-                                ? const Color(0xFF10B981)
-                                : palette.mutedText,
-                          ),
-                        ),
-                        SizedBox(width: scale.s(12)),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Google Account (Gmail)',
-                              style: OnyxTypography.sans(
-                                fontSize: scale.s(13),
-                                fontWeight: FontWeight.w600,
-                                color: palette.primaryText,
-                              ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: scale.s(36),
+                            height: scale.s(36),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: profile.isEmailConnected
+                                  ? const Color(0xFF10B981)
+                                        .withValues(alpha: 0.15)
+                                  : palette.hoverFill,
                             ),
-                            SizedBox(height: scale.s(2)),
-                            Text(
-                              profile.isEmailConnected
-                                  ? (profile.email ?? 'Connected')
-                                  : 'Not connected',
-                              style: OnyxTypography.mono(
-                                fontSize: scale.s(10.5),
-                                color: profile.isEmailConnected
-                                    ? palette.gold
-                                    : palette.mutedText,
-                              ),
+                            child: Icon(
+                              Icons.alternate_email_rounded,
+                              size: scale.s(18),
+                              color: profile.isEmailConnected
+                                  ? const Color(0xFF10B981)
+                                  : palette.mutedText,
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          SizedBox(width: scale.s(12)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Google Account (Gmail)',
+                                  style: OnyxTypography.sans(
+                                    fontSize: scale.s(13),
+                                    fontWeight: FontWeight.w600,
+                                    color: palette.primaryText,
+                                  ),
+                                ),
+                                SizedBox(height: scale.s(2)),
+                                Text(
+                                  profile.isEmailConnected
+                                      ? (profile.email ?? 'Connected')
+                                      : 'Not connected',
+                                  style: OnyxTypography.mono(
+                                    fontSize: scale.s(10.5),
+                                    color: profile.isEmailConnected
+                                        ? palette.gold
+                                        : palette.mutedText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    SizedBox(width: scale.s(8)),
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: scale.s(8),
@@ -508,74 +513,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
               borderRadius: BorderRadius.circular(scale.s(18)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Column(
-                  children: [
-                    Text(
-                      '${widget.cards.length}',
-                      style: OnyxTypography.editorial(
-                        fontSize: scale.s(24),
-                        fontWeight: FontWeight.w700,
-                        color: palette.primaryText,
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '${widget.cards.length}',
+                        style: OnyxTypography.editorial(
+                          fontSize: scale.s(24),
+                          fontWeight: FontWeight.w700,
+                          color: palette.primaryText,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: scale.s(2)),
-                    Text(
-                      'Active Cards',
-                      style: OnyxTypography.mono(
-                        fontSize: scale.s(9.5),
-                        color: palette.mutedText,
+                      SizedBox(height: scale.s(2)),
+                      Text(
+                        'Active Cards',
+                        textAlign: TextAlign.center,
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: palette.mutedText,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Container(
                   width: 1,
                   height: scale.s(32),
                   color: palette.divider,
                 ),
-                Column(
-                  children: [
-                    Text(
-                      '${widget.transactions.length}',
-                      style: OnyxTypography.editorial(
-                        fontSize: scale.s(24),
-                        fontWeight: FontWeight.w700,
-                        color: palette.primaryText,
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '${widget.transactions.length}',
+                        style: OnyxTypography.editorial(
+                          fontSize: scale.s(24),
+                          fontWeight: FontWeight.w700,
+                          color: palette.primaryText,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: scale.s(2)),
-                    Text(
-                      'Transactions',
-                      style: OnyxTypography.mono(
-                        fontSize: scale.s(9.5),
-                        color: palette.mutedText,
+                      SizedBox(height: scale.s(2)),
+                      Text(
+                        'Transactions',
+                        textAlign: TextAlign.center,
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: palette.mutedText,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Container(
                   width: 1,
                   height: scale.s(32),
                   color: palette.divider,
                 ),
-                Column(
-                  children: [
-                    Icon(
-                      Icons.shield_outlined,
-                      size: scale.s(20),
-                      color: palette.gold,
-                    ),
-                    SizedBox(height: scale.s(4)),
-                    Text(
-                      'AES-256 Vault',
-                      style: OnyxTypography.mono(
-                        fontSize: scale.s(9.5),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: scale.s(20),
                         color: palette.gold,
                       ),
-                    ),
-                  ],
+                      SizedBox(height: scale.s(4)),
+                      Text(
+                        'AES-256 Vault',
+                        textAlign: TextAlign.center,
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: palette.gold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -600,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 SizedBox(height: scale.s(4)),
                 Text(
-                  'VERSION 0.3.0 · LUXURY ONYX EDITION',
+                  'VERSION 0.3.2 · LUXURY ONYX EDITION',
                   style: OnyxTypography.mono(
                     fontSize: scale.s(9),
                     color: palette.mutedText,
@@ -637,16 +650,18 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: OnyxTypography.sans(
-            fontSize: scale.s(12.5),
-            fontWeight: FontWeight.w500,
-            color: palette.primaryText,
+        Expanded(
+          child: Text(
+            label,
+            style: OnyxTypography.sans(
+              fontSize: scale.s(12.5),
+              fontWeight: FontWeight.w500,
+              color: palette.primaryText,
+            ),
           ),
         ),
+        SizedBox(width: scale.s(8)),
         GestureDetector(
           onTap: onAction,
           child: Row(

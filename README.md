@@ -113,7 +113,7 @@ Import-source behavior and bank-adapter limits: [`docs/bank-adapters.md`](docs/b
 ## Verification
 
 On this Linux host: `dart format` is clean, `flutter analyze` reports no issues,
-`flutter test` passes 199/199, and `flutter build apk --debug` succeeds. The debug APK is
+`flutter test` passes 201/201, and `flutter build apk --debug` succeeds. The debug APK is
 at `build/app/outputs/flutter-apk/app-debug.apk`.
 
 Not validated here: iOS build/Keychain/TestFlight (no macOS host), Android device

@@ -162,8 +162,11 @@ class _PermissionOnboardingSheetState
                   SizedBox(height: scale.s(16)),
 
                   // Gold pill badge
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: scale.s(8),
+                    runSpacing: scale.s(6),
                     children: [
                       Container(
                         padding: EdgeInsets.symmetric(
@@ -392,15 +395,18 @@ class _PermissionCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: OnyxTypography.sans(
-                        fontSize: scale.s(13),
-                        fontWeight: FontWeight.w600,
-                        color: palette.primaryText,
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: OnyxTypography.sans(
+                          fontSize: scale.s(13),
+                          fontWeight: FontWeight.w600,
+                          color: palette.primaryText,
+                        ),
                       ),
                     ),
-                    if (isGranted)
+                    if (isGranted) ...[
+                      SizedBox(width: scale.s(8)),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -419,6 +425,7 @@ class _PermissionCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ],
                   ],
                 ),
                 SizedBox(height: scale.s(4)),
