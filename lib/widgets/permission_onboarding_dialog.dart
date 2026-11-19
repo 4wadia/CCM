@@ -11,18 +11,20 @@ Future<void> showPermissionOnboardingDialog({
   required BuildContext context,
   required bool isDarkMode,
   required VoidCallback onComplete,
+  required VoidCallback onSkip,
   required ValueChanged<UserProfileModel> onProfileUpdated,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    isDismissible: false,
-    enableDrag: false,
+    isDismissible: true,
+    enableDrag: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.8),
     builder: (ctx) => _PermissionOnboardingSheet(
       isDarkMode: isDarkMode,
       onComplete: onComplete,
+      onSkip: onSkip,
       onProfileUpdated: onProfileUpdated,
     ),
   );
@@ -31,11 +33,13 @@ Future<void> showPermissionOnboardingDialog({
 class _PermissionOnboardingSheet extends StatefulWidget {
   final bool isDarkMode;
   final VoidCallback onComplete;
+  final VoidCallback onSkip;
   final ValueChanged<UserProfileModel> onProfileUpdated;
 
   const _PermissionOnboardingSheet({
     required this.isDarkMode,
     required this.onComplete,
+    required this.onSkip,
     required this.onProfileUpdated,
   });
 
@@ -396,7 +400,7 @@ class _PermissionOnboardingSheetState
                     child: TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        widget.onComplete();
+                        widget.onSkip();
                       },
                       child: Text(
                         'Set up manually later',

@@ -9,6 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/manage_card_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/auto_sync_service.dart';
+import 'services/onyx_store.dart';
 import 'theme/onyx_theme.dart';
 import 'widgets/complete_card_dialog.dart';
 import 'widgets/floating_pill_nav.dart';
@@ -27,14 +28,19 @@ void main() {
 }
 
 class OnyxCardsApp extends StatefulWidget {
-  const OnyxCardsApp({super.key});
+  /// Optional persistence override for widget tests.
+  final OnyxStore? store;
+
+  const OnyxCardsApp({super.key, this.store});
 
   @override
   State<OnyxCardsApp> createState() => _OnyxCardsAppState();
 }
 
-class _OnyxCardsAppState extends State<OnyxCardsApp> {
+class _OnyxCardsAppState extends State<OnyxCardsApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  late final OnyxStore _store;
   bool _isDarkMode = true;
   ScreenId _activeTab = ScreenId.home;
   final List<ScreenId> _tabHistory = <ScreenId>[];
@@ -44,21 +50,60 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
   final List<TransactionModel> _transactions = <TransactionModel>[];
   String? _statusPillMessage;
   Timer? _toastTimer;
-  bool _hasPromptedPermissions = false;
+  Timer? _persistTimer;
+  bool _isHydrated = false;
+  bool _hasCompletedPermissionOnboarding = false;
 
   UserProfileModel _userProfile = const UserProfileModel(name: '');
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _store = widget.store ?? OnyxStore();
+    unawaited(_restoreDashboard());
+  }
+
+  Future<void> _restoreDashboard() async {
+    OnyxSnapshot? snapshot;
+    var onboardingComplete = false;
+    try {
+      snapshot = await _store.load();
+      onboardingComplete = await _store.hasCompletedPermissionOnboarding();
+    } catch (_) {
+      // Keep the app usable in memory if local storage cannot be opened.
+    }
+
+    if (!mounted) return;
+    setState(() {
+      if (snapshot != null) {
+        _cards = List<CreditCardModel>.of(snapshot.cards);
+        _transactions
+          ..clear()
+          ..addAll(snapshot.transactions);
+        _userProfile = snapshot.profile;
+        _isDarkMode = snapshot.isDarkMode;
+      }
+      _hasCompletedPermissionOnboarding = onboardingComplete;
+      _isHydrated = true;
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkFirstLaunchPermissions();
+      if (mounted) unawaited(_maybePromptPermissions());
     });
   }
 
-  Future<void> _checkFirstLaunchPermissions() async {
-    if (_hasPromptedPermissions) return;
-    _hasPromptedPermissions = true;
+  Future<void> _maybePromptPermissions() async {
+    if (!_isHydrated || _hasCompletedPermissionOnboarding) return;
+
+    // The first-run sheet is shown once. Permissions can be changed later from
+    // Profile, so a missing permission must not trigger a prompt every launch.
+    _hasCompletedPermissionOnboarding = true;
+    try {
+      await _store.markPermissionOnboardingComplete();
+    } catch (_) {}
+
+    if (!mounted) return;
 
     final service = AutoSyncService();
     final statuses = await service.checkPermissions();
@@ -67,25 +112,26 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
         (statuses['notifications'] ?? false) &&
         _userProfile.isEmailConnected;
 
-    if (!allGranted && mounted) {
-      final navContext = _navigatorKey.currentContext;
-      if (navContext != null && navContext.mounted) {
-        unawaited(
-          showPermissionOnboardingDialog(
-            context: navContext,
-            isDarkMode: _isDarkMode,
-            onComplete: () {
-              _runFirstTimeAutoSetup();
-            },
-            onProfileUpdated: (updated) {
-              if (mounted) setState(() => _userProfile = updated);
-            },
-          ),
-        );
+    if (!mounted) return;
+    if (allGranted) {
+      if (_cards.isEmpty && _transactions.isEmpty) {
+        unawaited(_runFirstTimeAutoSetup());
       }
-    } else {
-      unawaited(_runFirstTimeAutoSetup());
+      return;
     }
+
+    final navContext = _navigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) return;
+
+    unawaited(
+      showPermissionOnboardingDialog(
+        context: navContext,
+        isDarkMode: _isDarkMode,
+        onComplete: () => unawaited(_runFirstTimeAutoSetup()),
+        onSkip: () {},
+        onProfileUpdated: _updateProfile,
+      ),
+    );
   }
 
   Future<void> _runFirstTimeAutoSetup() async {
@@ -127,6 +173,47 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
         });
       }
     }
+    _schedulePersist();
+  }
+
+  void _updateProfile(UserProfileModel updated) {
+    if (!mounted) return;
+    setState(() => _userProfile = updated);
+    _schedulePersist();
+  }
+
+  void _schedulePersist() {
+    if (!_isHydrated) return;
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) unawaited(_persistDashboard());
+    });
+  }
+
+  Future<void> _persistDashboard() async {
+    if (!_isHydrated) return;
+    try {
+      await _store.save(
+        OnyxSnapshot(
+          cards: _cards,
+          transactions: _transactions,
+          profile: _userProfile,
+          isDarkMode: _isDarkMode,
+        ),
+      );
+    } catch (_) {
+      // Keep running in memory if saving fails.
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _persistTimer?.cancel();
+      unawaited(_persistDashboard());
+    }
   }
 
   void _promptCompleteCard(CreditCardModel card) {
@@ -154,6 +241,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
         _selectedCardForManage = updated;
       }
     });
+    _schedulePersist();
   }
 
   void _handleDeleteCard(CreditCardModel card) {
@@ -167,6 +255,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       }
     });
     _showStatusToast('${card.cardTier} removed');
+    _schedulePersist();
   }
 
   static bool _transactionBelongsToCard(
@@ -184,7 +273,10 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _toastTimer?.cancel();
+    _persistTimer?.cancel();
+    unawaited(_persistDashboard());
     super.dispose();
   }
 
@@ -213,6 +305,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       _activeTab = ScreenId.cards;
     });
     _showStatusToast('New ${newCard.cardTier} added');
+    _schedulePersist();
 
     // The form is already closed at this point. Scan in the background so the
     // new card is visible immediately instead of being covered by a modal.
@@ -239,6 +332,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
           );
         }
       });
+      _schedulePersist();
 
       if (syncResult.transactions.isNotEmpty) {
         _showStatusToast(
@@ -379,8 +473,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                 ? ProfileScreen(
                                     key: const ValueKey('screen-profile'),
                                     profile: _userProfile,
-                                    onUpdateProfile: (updated) =>
-                                        setState(() => _userProfile = updated),
+                                    onUpdateProfile: _updateProfile,
                                     cards: _cards,
                                     transactions: _transactions,
                                     isDarkMode: _isDarkMode,
@@ -401,9 +494,12 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                           isDarkMode: _isDarkMode,
                                         ),
                                     isDarkMode: _isDarkMode,
-                                    onToggleDarkMode: () => setState(
-                                      () => _isDarkMode = !_isDarkMode,
-                                    ),
+                                    onToggleDarkMode: () {
+                                      setState(
+                                        () => _isDarkMode = !_isDarkMode,
+                                      );
+                                      _schedulePersist();
+                                    },
                                   ),
                           ),
                         ),
