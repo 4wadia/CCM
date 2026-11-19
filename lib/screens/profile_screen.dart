@@ -656,7 +656,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 SizedBox(height: scale.s(4)),
                 Text(
-                  'VERSION 0.3.4 · LUXURY ONYX EDITION',
+                  'VERSION 0.3.5 · LUXURY ONYX EDITION',
                   style: OnyxTypography.mono(
                     fontSize: scale.s(9),
                     color: palette.mutedText,

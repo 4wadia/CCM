@@ -1,7 +1,8 @@
 import 'dart:ui';
 
 import 'package:credit_card_manager/main.dart';
-import 'package:flutter/widgets.dart' show Navigator;
+import 'package:credit_card_manager/widgets/physical_credit_card.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -46,5 +47,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TOTAL MONTH SPEND'), findsOneWidget);
+  });
+
+  testWidgets('back returns to the previously visited tab', (tester) async {
+    await openDashboard(tester);
+
+    await tester.tap(find.text('Cards').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Profile').last);
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your Cards'), findsOneWidget);
+    expect(find.text('TOTAL MONTH SPEND'), findsNothing);
+  });
+
+  testWidgets('adding a card closes the form and shows the new card', (
+    tester,
+  ) async {
+    await openDashboard(tester);
+
+    await tester.tap(find.text('Cards').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add Card'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Issue Card'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).at(0), '1234');
+    await tester.enterText(find.byType(TextFormField).at(1), 'TEST USER');
+    await tester.enterText(find.byType(TextFormField).at(2), '100000');
+    await tester.ensureVisible(find.text('Issue Instrument'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Issue Instrument'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Issue Card'), findsNothing);
+    expect(find.text('AUTO-SYNC IN PROGRESS'), findsNothing);
+    expect(find.byType(PhysicalCreditCard), findsOneWidget);
+
+    await tester.tap(find.byType(PhysicalCreditCard));
+    await tester.pumpAndSettle();
+    expect(find.text('Manage Card'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your Cards'), findsOneWidget);
+    expect(find.text('Manage Card'), findsNothing);
   });
 }

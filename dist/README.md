@@ -1,47 +1,46 @@
 # Credit Card Manager — Android APK
 
-Download: `credit-card-manager-0.3.4.apk`
+Download: `credit-card-manager-0.3.5.apk`
 
 - Package: `app.creditcardmanager`
-- Version: `0.3.4` (versionCode 8)
+- Version: `0.3.5` (versionCode 9)
 - Min Android: 7.0 (API 24)
 - ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`
-- SHA-256: `4d0974f3e7d9263ea76e46b1162e3d6c1696a74040304f9deddef66b23048c84`
+- SHA-256: `f31b4fbf5cfb999f0a0b8798cc416053429496417308304f6dc84131cff802de`
 - Signing SHA-1: `09:7C:95:19:FE:C0:84:65:4A:43:B7:55:FE:04:D6:C9:BC:BF:EB:26`
 
-## What changed in 0.3.4
+## What changed in 0.3.5
 
-- **Slice added to the card catalogue.** Choose **Slice Small Finance Bank →
-  UPI Credit Card**. The generated card face uses Slice's magenta "super
-  slicer" colour and wordmark.
-- **SBI Card Eternal added.** Official SBI card artwork loads automatically.
-  The Eternal card is issued on RuPay and Mastercard; the network selector lets
-  you pick the one printed on your card.
-- **PhonePe SBI Card SELECT BLACK and PURPLE added.** Both variants include
-  official SBI artwork. Their vertical card faces now keep the correct portrait
-  shape instead of being cropped into a horizontal frame.
-- **HDFC Swiggy split into BLCK and Ornge.** Both variants use the official
-  Swiggy HDFC Bank artwork and the correct black/orange colours.
-- **Catalogue now covers 47 banks and issuers.** Every bank still has an
-  **Other card** fallback, and the bank/model/network selectors work as before.
-- **Google "Access blocked" troubleshooting is now in the app.** The setup help
-  dialog explains the Testing/test-user fix and the permission reset steps.
+- **Adding a card now closes the form and shows the card immediately.** The
+  form returns the new card to the portfolio, so it can no longer stay open
+  while another dialog opens on top of it.
+- **Automatic SMS/statement sync runs in the background.** After the card
+  appears, the app scans the last 30 days without covering the portfolio with a
+  blocking progress dialog.
+- **New animations.** Cards fade/slide into the portfolio, the card count
+  animates, card artwork fades in when it finishes loading, cards gently scale
+  when pressed, and the top status toast slides in and out.
+- **Back navigation follows your history.** Back from a managed card returns to
+  the card list, and back from Cards/Profile returns to the previously visited
+  tab instead of always jumping to Home. Home is still the only screen that
+  exits the app.
+- **Card previews animate when you change bank, model, or network.**
 
-The 0.3.3 improvements remain in place: Google sign-in errors are visible,
-cards can be deleted with their imported transactions, Manage Card uses only
-real card data, and the UI/card-artwork polish is included.
+The 0.3.4 catalogue additions remain in place: Slice, SBI Card Eternal,
+PhonePe SBI SELECT BLACK/PURPLE, HDFC Swiggy BLCK/Ornge, official artwork,
+vertical SBI card faces, and 47 banks/issuers.
 
 ## Install / update
 
 1. Download the APK on your Android phone.
 2. Allow installs from the browser/file manager when prompted.
 3. Open the APK and tap **Install**.
-4. If you already have **0.3.1, 0.3.2, or 0.3.3**, this installs over it in
-   place. You should not need to uninstall.
+4. If you already have **0.3.1 through 0.3.4**, this installs over it in place.
+   You should not need to uninstall.
 
 **One-time exception:** 0.3.0 and earlier used a different signing key. If you
 are still on 0.3.0 or earlier, Android will refuse the update. Uninstall the old
-app once, then install 0.3.4. Every release from 0.3.1 onward uses the same
+app once, then install 0.3.5. Every release from 0.3.1 onward uses the same
 sideload key, so future updates install in place.
 
 This build is signed with the public Android debug certificate for sideloading.
@@ -52,9 +51,6 @@ Fresh installs start with no cards and no transactions. Cards and transactions
 are created only from SMS/statements the user allows the app to read or from
 manual entry. Only the last four digits are stored; full card numbers and CVVs
 are never requested or saved.
-
-On Android, the back gesture or button returns to Home from Cards, Profile, or a
-managed card before it can close the app.
 
 ## Gmail setup
 

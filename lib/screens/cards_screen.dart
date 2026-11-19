@@ -48,14 +48,28 @@ class CardsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${cards.length} ACTIVE CARDS',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: OnyxTypography.mono(
-                          fontSize: scale.s(11),
-                          color: palette.mutedText,
-                          letterSpacing: 1.4,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 240),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, -0.25),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        ),
+                        child: Text(
+                          '${cards.length} ACTIVE CARDS',
+                          key: ValueKey(cards.length),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: OnyxTypography.mono(
+                            fontSize: scale.s(11),
+                            color: palette.mutedText,
+                            letterSpacing: 1.4,
+                          ),
                         ),
                       ),
                       SizedBox(height: scale.s(4)),
@@ -184,15 +198,19 @@ class CardsScreen extends StatelessWidget {
           else
             // Vertical Stack of Original-Color Physical Cards (Tightly Spaced)
             for (int i = 0; i < cards.length; i++) ...[
-              PhysicalCreditCard(
-                card: cards[i],
-                onTap: () {
-                  if (cards[i].isNeedsCompletion && onCompleteCard != null) {
-                    onCompleteCard!(cards[i]);
-                  } else {
-                    onSelectCard(cards[i]);
-                  }
-                },
+              _AnimatedCardEntrance(
+                key: ValueKey('card-entrance-${cards[i].id}'),
+                index: i,
+                child: PhysicalCreditCard(
+                  card: cards[i],
+                  onTap: () {
+                    if (cards[i].isNeedsCompletion && onCompleteCard != null) {
+                      onCompleteCard!(cards[i]);
+                    } else {
+                      onSelectCard(cards[i]);
+                    }
+                  },
+                ),
               ),
               if (cards[i].isNeedsCompletion) ...[
                 SizedBox(height: scale.s(6)),
@@ -243,6 +261,42 @@ class CardsScreen extends StatelessWidget {
             ],
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedCardEntrance extends StatelessWidget {
+  final Widget child;
+  final int index;
+
+  const _AnimatedCardEntrance({
+    super.key,
+    required this.child,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final staggerIndex = index > 5 ? 5 : index;
+    final duration = Duration(milliseconds: 380 + (staggerIndex * 45));
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 18),
+            child: Transform.scale(
+              scale: 0.965 + (value * 0.035),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

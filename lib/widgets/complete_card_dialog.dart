@@ -300,7 +300,30 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                   SizedBox(height: scale.s(16)),
 
                   // Live Interactive Physical Card Preview
-                  PhysicalCreditCard(card: _previewCard),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(
+                            begin: 0.98,
+                            end: 1,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: PhysicalCreditCard(
+                      key: ValueKey(
+                        'complete-preview-${_selectedBank.name}-'
+                        '$_selectedVariantName-${_selectedBrand.name}',
+                      ),
+                      card: _previewCard,
+                    ),
+                  ),
                   SizedBox(height: scale.s(7)),
                   Row(
                     children: [

@@ -135,6 +135,7 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
   String? _loadedArtKey;
   bool _artLoaded = false;
   bool _artFailed = false;
+  bool _isPressed = false;
 
   @override
   void didUpdateWidget(covariant PhysicalCreditCard oldWidget) {
@@ -352,8 +353,10 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
               children: [
                 if (showArt)
                   Positioned.fill(
-                    child: Opacity(
+                    child: AnimatedOpacity(
                       opacity: _artLoaded ? 1 : 0,
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOut,
                       child: hasLocalImage
                           ? Image.file(
                               File(card.cardImagePath!),
@@ -392,7 +395,15 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
 
                 // While official artwork loads (or if it fails) keep a complete,
                 // generated card face instead of showing an empty coloured box.
-                if (showGenerated) generatedFace,
+                // Fading it out once the artwork is ready avoids a hard swap.
+                IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: showGenerated ? 1 : 0,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOut,
+                    child: generatedFace,
+                  ),
+                ),
 
                 // Official card art already includes the bank and network
                 // marks, so only add a quiet strip for the masked number.
@@ -479,8 +490,16 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
 
     return GestureDetector(
       onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTapUp: (_) => setState(() => _isPressed = false),
       behavior: HitTestBehavior.opaque,
-      child: cardBody,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.985 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: cardBody,
+      ),
     );
   }
 }

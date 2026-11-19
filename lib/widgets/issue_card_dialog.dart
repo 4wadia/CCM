@@ -7,33 +7,24 @@ import '../theme/onyx_theme.dart';
 import '../utils/card_helpers.dart';
 import 'physical_credit_card.dart';
 
-Future<void> showIssueCardDialog({
+Future<CreditCardModel?> showIssueCardDialog({
   required BuildContext context,
   required bool isDarkMode,
   String? holderName,
-  required ValueChanged<CreditCardModel> onAddCard,
 }) {
-  return showDialog<void>(
+  return showDialog<CreditCardModel>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (ctx) => _IssueCardDialog(
-      isDarkMode: isDarkMode,
-      holderName: holderName,
-      onAddCard: onAddCard,
-    ),
+    builder: (ctx) =>
+        _IssueCardDialog(isDarkMode: isDarkMode, holderName: holderName),
   );
 }
 
 class _IssueCardDialog extends StatefulWidget {
   final bool isDarkMode;
   final String? holderName;
-  final ValueChanged<CreditCardModel> onAddCard;
 
-  const _IssueCardDialog({
-    required this.isDarkMode,
-    required this.holderName,
-    required this.onAddCard,
-  });
+  const _IssueCardDialog({required this.isDarkMode, required this.holderName});
 
   @override
   State<_IssueCardDialog> createState() => _IssueCardDialogState();
@@ -157,8 +148,10 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
           : null,
     );
 
-    widget.onAddCard(newCard);
-    Navigator.of(context).pop();
+    // Close the form first. The caller adds the card to the portfolio after
+    // this route is gone, so the add-card sheet can never remain on screen
+    // while a sync dialog opens on top of it.
+    Navigator.of(context).pop(newCard);
   }
 
   InputDecoration _inputDecoration(
@@ -346,29 +339,51 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  PhysicalCreditCard(
-                    card: CreditCardModel(
-                      id: 'preview',
-                      bankName: _selectedBank,
-                      holderName: _holderController.text.trim().isEmpty
-                          ? 'CARDHOLDER'
-                          : _holderController.text.trim().toUpperCase(),
-                      maskedNumber: '•••• $previewLast4',
-                      expiry: '',
-                      balance: 0,
-                      limit: 500000,
-                      brand: _selectedBrand,
-                      cardTier: _selectedVariant.name,
-                      cardColorValue: _originalColor.color.toARGB32(),
-                      isLightCard: _originalColor.isLight,
-                      dailyLimit: 100000,
-                      cardImagePath: _pickedImagePath,
-                      cardImageUrl: _pickedImagePath == null
-                          ? fetchOriginalCardImageUrl(
-                              _selectedBank,
-                              _selectedVariant.name,
-                            )
-                          : null,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(
+                            begin: 0.98,
+                            end: 1,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: PhysicalCreditCard(
+                      key: ValueKey(
+                        'preview-${_selectedBank.name}-'
+                        '$_selectedVariantName-${_selectedBrand.name}-'
+                        '${_pickedImagePath ?? 'official'}',
+                      ),
+                      card: CreditCardModel(
+                        id: 'preview',
+                        bankName: _selectedBank,
+                        holderName: _holderController.text.trim().isEmpty
+                            ? 'CARDHOLDER'
+                            : _holderController.text.trim().toUpperCase(),
+                        maskedNumber: '•••• $previewLast4',
+                        expiry: '',
+                        balance: 0,
+                        limit: 500000,
+                        brand: _selectedBrand,
+                        cardTier: _selectedVariant.name,
+                        cardColorValue: _originalColor.color.toARGB32(),
+                        isLightCard: _originalColor.isLight,
+                        dailyLimit: 100000,
+                        cardImagePath: _pickedImagePath,
+                        cardImageUrl: _pickedImagePath == null
+                            ? fetchOriginalCardImageUrl(
+                                _selectedBank,
+                                _selectedVariant.name,
+                              )
+                            : null,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 7),

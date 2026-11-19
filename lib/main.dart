@@ -15,7 +15,6 @@ import 'widgets/floating_pill_nav.dart';
 import 'widgets/galaxy_s26_ultra_frame.dart';
 import 'widgets/issue_card_dialog.dart';
 import 'widgets/permission_onboarding_dialog.dart';
-import 'widgets/sync_progress_dialog.dart';
 import 'widgets/transaction_detail_sheet.dart';
 
 void main() {
@@ -38,6 +37,8 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   bool _isDarkMode = true;
   ScreenId _activeTab = ScreenId.home;
+  final List<ScreenId> _tabHistory = <ScreenId>[];
+  ScreenId? _tabBeforeManage;
   CreditCardModel? _selectedCardForManage;
   List<CreditCardModel> _cards = <CreditCardModel>[];
   final List<TransactionModel> _transactions = <TransactionModel>[];
@@ -161,6 +162,8 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       _transactions.removeWhere((tx) => _transactionBelongsToCard(tx, card));
       if (_selectedCardForManage?.id == card.id) {
         _selectedCardForManage = null;
+        _activeTab = _tabBeforeManage ?? _activeTab;
+        _tabBeforeManage = null;
       }
     });
     _showStatusToast('${card.cardTier} removed');
@@ -193,44 +196,100 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
     });
   }
 
-  Future<void> _handleAddCard(
-    BuildContext context,
-    CreditCardModel newCard,
-  ) async {
+  Future<void> _openAddCard(BuildContext context) async {
+    final newCard = await showIssueCardDialog(
+      context: context,
+      isDarkMode: _isDarkMode,
+      holderName: _userProfile.name,
+    );
+    if (newCard == null || !mounted) return;
+    _handleAddCard(newCard);
+  }
+
+  void _handleAddCard(CreditCardModel newCard) {
     setState(() {
       _cards = [newCard, ..._cards];
+      _selectedCardForManage = null;
+      _activeTab = ScreenId.cards;
     });
-    _showStatusToast('New ${newCard.cardTier} Issued');
+    _showStatusToast('New ${newCard.cardTier} added');
 
-    // Trigger auto-scan for newly added card (last 30 days SMS/email statements)
-    final syncResult = await showCardSyncProgressDialog(
-      context: context,
-      card: newCard,
-      isDarkMode: _isDarkMode,
-    );
+    // The form is already closed at this point. Scan in the background so the
+    // new card is visible immediately instead of being covered by a modal.
+    unawaited(_syncNewCard(newCard));
+  }
 
-    if (syncResult != null && mounted) {
+  Future<void> _syncNewCard(CreditCardModel newCard) async {
+    try {
+      final syncResult = await AutoSyncService().syncLastMonthForCard(
+        card: newCard,
+      );
+      if (!mounted) return;
+
+      final index = _cards.indexWhere((c) => c.id == newCard.id);
+      if (index == -1) return; // The card was removed while scanning.
+
       setState(() {
         if (syncResult.transactions.isNotEmpty) {
           _transactions.insertAll(0, syncResult.transactions);
         }
-        final index = _cards.indexWhere((c) => c.id == newCard.id);
-        if (index != -1) {
+        if (syncResult.monthSpend > 0) {
           _cards[index] = _cards[index].copyWith(
-            balance: syncResult.monthSpend > 0
-                ? syncResult.monthSpend
-                : _cards[index].balance,
+            balance: syncResult.monthSpend,
           );
         }
       });
+
       if (syncResult.transactions.isNotEmpty) {
         _showStatusToast(
           'Auto-synced ${syncResult.transactions.length} transactions.',
         );
-      } else {
-        _showStatusToast('No matching SMS transactions found yet.');
       }
+    } catch (_) {
+      // The card is already in the portfolio. A background scan failure should
+      // not interrupt the user or reopen a blocking dialog.
     }
+  }
+
+  void _openManageCard(CreditCardModel card) {
+    setState(() {
+      _tabBeforeManage = _activeTab;
+      _selectedCardForManage = card;
+    });
+  }
+
+  void _closeManageCard() {
+    if (!mounted) return;
+    final destination = _tabBeforeManage ?? ScreenId.cards;
+    setState(() {
+      _selectedCardForManage = null;
+      _activeTab = destination;
+      _tabBeforeManage = null;
+    });
+  }
+
+  void _selectTab(ScreenId tab) {
+    if (tab == _activeTab) return;
+    setState(() {
+      _selectedCardForManage = null;
+      _tabBeforeManage = null;
+      _tabHistory.add(_activeTab);
+      _activeTab = tab;
+    });
+  }
+
+  void _handleBack() {
+    if (!mounted) return;
+    if (_selectedCardForManage != null) {
+      _closeManageCard();
+      return;
+    }
+    if (_activeTab == ScreenId.home) return;
+    setState(() {
+      _activeTab = _tabHistory.isNotEmpty
+          ? _tabHistory.removeLast()
+          : ScreenId.home;
+    });
   }
 
   @override
@@ -259,13 +318,14 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       home: Builder(
         builder: (innerContext) {
           return PopScope(
-            // Android back should return to Home from Cards, Profile or a
-            // managed card before it is allowed to close the app.
+            // Back follows the same stack as the in-app back buttons: a managed
+            // card returns to the tab it came from, and tabs return to the
+            // previously visited tab before the app is allowed to close.
             canPop:
                 _activeTab == ScreenId.home && _selectedCardForManage == null,
             onPopInvokedWithResult: (didPop, result) {
               if (didPop) return;
-              _handleBackToHome();
+              _handleBack();
             },
             child: Scaffold(
               backgroundColor: palette.background,
@@ -299,9 +359,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                     ),
                                     card: _selectedCardForManage!,
                                     transactions: _transactions,
-                                    onBack: () => setState(
-                                      () => _selectedCardForManage = null,
-                                    ),
+                                    onBack: _closeManageCard,
                                     onCompleteCard: _promptCompleteCard,
                                     onUpdateCard: _handleUpdateCard,
                                     onDeleteCard: _handleDeleteCard,
@@ -312,18 +370,8 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                     key: const ValueKey('screen-cards'),
                                     cards: _cards,
                                     onOpenNewCardModal: () =>
-                                        showIssueCardDialog(
-                                          context: innerContext,
-                                          isDarkMode: _isDarkMode,
-                                          holderName: _userProfile.name,
-                                          onAddCard: (card) => _handleAddCard(
-                                            innerContext,
-                                            card,
-                                          ),
-                                        ),
-                                    onSelectCard: (card) => setState(
-                                      () => _selectedCardForManage = card,
-                                    ),
+                                        _openAddCard(innerContext),
+                                    onSelectCard: _openManageCard,
                                     onCompleteCard: _promptCompleteCard,
                                     isDarkMode: _isDarkMode,
                                   )
@@ -336,9 +384,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                     cards: _cards,
                                     transactions: _transactions,
                                     isDarkMode: _isDarkMode,
-                                    onBack: () => setState(
-                                      () => _activeTab = ScreenId.home,
-                                    ),
+                                    onBack: _handleBack,
                                   )
                                 : HomeScreen(
                                     key: const ValueKey('screen-home'),
@@ -372,45 +418,63 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                               child: FloatingPillNav(
                                 activeTab: _activeTab,
                                 isDarkMode: _isDarkMode,
-                                onSelectTab: (tab) => setState(() {
-                                  _selectedCardForManage = null;
-                                  _activeTab = tab;
-                                }),
+                                onSelectTab: _selectTab,
                               ),
                             ),
                           ),
 
                         // Subtle Top Toast Pill
-                        if (_statusPillMessage != null)
-                          Positioned(
-                            top: 8,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF18181B),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(0xFFD4AF37)
-                                        .withValues(alpha: 0.45),
+                        Positioned(
+                          top: 8,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, -0.35),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
                                   ),
-                                ),
-                                child: Text(
-                                  _statusPillMessage!,
-                                  style: OnyxTypography.mono(
-                                    fontSize: 10,
-                                    color: const Color(0xFFF8F7F4),
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                              ),
+                                );
+                              },
+                              child: _statusPillMessage == null
+                                  ? const SizedBox.shrink()
+                                  : Container(
+                                      key: ValueKey(_statusPillMessage),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF18181B),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: const Color(0xFFD4AF37)
+                                              .withValues(alpha: 0.45),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _statusPillMessage!,
+                                        style: OnyxTypography.mono(
+                                          fontSize: 10,
+                                          color: const Color(0xFFF8F7F4),
+                                          letterSpacing: 0.6,
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),
@@ -421,14 +485,5 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
         },
       ),
     );
-  }
-
-  void _handleBackToHome() {
-    if (!mounted) return;
-    if (_activeTab == ScreenId.home && _selectedCardForManage == null) return;
-    setState(() {
-      _selectedCardForManage = null;
-      _activeTab = ScreenId.home;
-    });
   }
 }
