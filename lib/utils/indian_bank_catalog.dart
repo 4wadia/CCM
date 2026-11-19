@@ -28,11 +28,16 @@ class CardVariantPreset {
   final CardColorMatch color;
   final String? imageUrl;
 
+  /// Aspect ratio of [imageUrl] when the card is issued in a vertical format.
+  /// Standard horizontal card art uses the widget's default 1.586 ratio.
+  final double? imageAspectRatio;
+
   const CardVariantPreset({
     required this.name,
     required this.defaultBrand,
     required this.color,
     this.imageUrl,
+    this.imageAspectRatio,
   });
 }
 
@@ -78,17 +83,23 @@ String _iciciArt(String path) {
       'managed-assets/revamp-page-images/$path';
 }
 
+String _sbiArt(String path) {
+  return 'https://www.sbicard.com/static-resources/img/$path';
+}
+
 CardVariantPreset _variant(
   String name,
   CardSupplier brand, {
   CardColorMatch? color,
   String? imageUrl,
+  double? imageAspectRatio,
 }) {
   return CardVariantPreset(
     name: name,
     defaultBrand: brand,
     color: color ?? _brandColor(brand),
     imageUrl: imageUrl,
+    imageAspectRatio: imageAspectRatio,
   );
 }
 
@@ -171,9 +182,25 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
       imageUrl: _hdfcArt('tata-neu-p'),
     ),
     _variant(
-      'Swiggy HDFC Bank',
+      'Swiggy Ornge',
       CardSupplier.mastercard,
+      color: const CardColorMatch(
+        label: 'Swiggy Orange',
+        color: Color(0xFFD9480F),
+        isLight: false,
+      ),
       imageUrl: _hdfcArt('card-facia-swiggy'),
+    ),
+    _variant(
+      'Swiggy BLCK',
+      CardSupplier.mastercard,
+      color: const CardColorMatch(
+        label: 'Swiggy Black',
+        color: Color(0xFF121214),
+        isLight: false,
+        accentColor: Color(0xFFF5E6D3),
+      ),
+      imageUrl: _hdfcArt('facia-swiggy-blck-cc'),
     ),
     _variant(
       'Marriott Bonvoy',
@@ -252,6 +279,51 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
     _variant('Signature', CardSupplier.visa),
   ],
   IndianBank.sbi: [
+    _variant(
+      'Eternal',
+      CardSupplier.rupay,
+      color: const CardColorMatch(
+        label: 'Eternal Black',
+        color: Color(0xFF111114),
+        isLight: false,
+        accentColor: Color(0xFFC9CBD1),
+      ),
+      imageUrl: _sbiArt(
+        'card/product-detail-assets/all-other-cards-left-banners/'
+        'eternal-sbi-card/front-eternal-card.png',
+      ),
+      imageAspectRatio: 0.63,
+    ),
+    _variant(
+      'PhonePe SELECT BLACK',
+      CardSupplier.rupay,
+      color: const CardColorMatch(
+        label: 'PhonePe Midnight',
+        color: Color(0xFF0B1220),
+        isLight: false,
+        accentColor: Color(0xFF7C5CFF),
+      ),
+      imageUrl: _sbiArt(
+        'card/card-face-assets/for-website/front/vertical/'
+        'phonepe-select-black-card-face-min.png',
+      ),
+      imageAspectRatio: 0.63,
+    ),
+    _variant(
+      'PhonePe PURPLE',
+      CardSupplier.rupay,
+      color: const CardColorMatch(
+        label: 'PhonePe Purple',
+        color: Color(0xFF4A1E6B),
+        isLight: false,
+        accentColor: Color(0xFFB983FF),
+      ),
+      imageUrl: _sbiArt(
+        'card/card-face-assets/for-website/front/vertical/'
+        'phonepe-purple-card-face-min.png',
+      ),
+      imageAspectRatio: 0.63,
+    ),
     _variant(
       'Aurum',
       CardSupplier.visa,
@@ -863,6 +935,18 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
   IndianBank.northEastSmallFinance: [
     _variant('Platinum', CardSupplier.visa),
     _variant('RuPay Select', CardSupplier.rupay),
+  ],
+  IndianBank.slice: [
+    _variant(
+      'UPI Credit Card',
+      CardSupplier.rupay,
+      color: const CardColorMatch(
+        label: 'Super Slicer Magenta',
+        color: Color(0xFFB000A6),
+        isLight: false,
+        accentColor: Color(0xFFFFD6FA),
+      ),
+    ),
   ],
   IndianBank.unitySmallFinance: [
     _variant('Platinum', CardSupplier.visa),

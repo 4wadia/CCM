@@ -118,13 +118,13 @@ class CardSupplierMark extends StatelessWidget {
 class PhysicalCreditCard extends StatefulWidget {
   final CreditCardModel card;
   final VoidCallback? onTap;
-  final double aspectRatio;
+  final double? aspectRatio;
 
   const PhysicalCreditCard({
     super.key,
     required this.card,
     this.onTap,
-    this.aspectRatio = 1.586,
+    this.aspectRatio,
   });
 
   @override
@@ -176,6 +176,9 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
   Widget build(BuildContext context) {
     final card = widget.card;
     final scale = OnyxScale.of(context);
+    final effectiveAspectRatio =
+        widget.aspectRatio ??
+        fetchOriginalCardAspectRatio(card.bankName, card.cardTier);
     final originalColor = fetchOriginalCardColor(
       card.bankName,
       card.cardTier,
@@ -337,7 +340,7 @@ class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
 
     final Widget cardBody = RepaintBoundary(
       child: AspectRatio(
-        aspectRatio: widget.aspectRatio,
+        aspectRatio: effectiveAspectRatio,
         child: Container(
           decoration: BoxDecoration(
             color: baseColor,

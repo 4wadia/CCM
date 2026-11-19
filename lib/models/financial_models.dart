@@ -53,6 +53,7 @@ enum IndianBank {
   utkarsh('Utkarsh Small Finance Bank'),
   capitalSmallFinance('Capital Small Finance Bank'),
   northEastSmallFinance('North East Small Finance Bank'),
+  slice('Slice Small Finance Bank'),
   unitySmallFinance('Unity Small Finance Bank'),
   shivalikSmallFinance('Shivalik Small Finance Bank'),
 
@@ -106,6 +107,7 @@ enum IndianBank {
     IndianBank.utkarsh => 'Utkarsh',
     IndianBank.capitalSmallFinance => 'Capital',
     IndianBank.northEastSmallFinance => 'NESFB',
+    IndianBank.slice => 'Slice',
     IndianBank.unitySmallFinance => 'Unity',
     IndianBank.shivalikSmallFinance => 'Shivalik',
     IndianBank.other => 'Other',

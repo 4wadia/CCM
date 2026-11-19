@@ -623,6 +623,19 @@ class AuthenticBankLogo extends StatelessWidget {
           ),
         );
 
+      case IndianBank.slice:
+        return Text(
+          'slice',
+          style: OnyxTypography.sans(
+            fontSize: 17 * scale,
+            fontWeight: FontWeight.w800,
+            color: isLightCard
+                ? const Color(0xFFB000A6)
+                : const Color(0xFFF8F7F4),
+            letterSpacing: -0.5,
+          ),
+        );
+
       default:
         return Row(
           mainAxisSize: MainAxisSize.min,

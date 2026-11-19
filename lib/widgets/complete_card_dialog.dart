@@ -300,7 +300,7 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
                   SizedBox(height: scale.s(16)),
 
                   // Live Interactive Physical Card Preview
-                  PhysicalCreditCard(card: _previewCard, aspectRatio: 1.586),
+                  PhysicalCreditCard(card: _previewCard),
                   SizedBox(height: scale.s(7)),
                   Row(
                     children: [

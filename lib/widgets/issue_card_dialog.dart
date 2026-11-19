@@ -370,7 +370,6 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                             )
                           : null,
                     ),
-                    aspectRatio: 1.586,
                   ),
                   const SizedBox(height: 7),
                   Row(

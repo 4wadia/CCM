@@ -75,9 +75,30 @@ void main() {
           IndianBank.citibank,
           IndianBank.americanExpress,
           IndianBank.sbm,
+          IndianBank.slice,
           IndianBank.other,
         ]),
       );
+    });
+
+    test('includes the newly added co-branded card variants', () {
+      final hdfc = bankCardVariants[IndianBank.hdfc]!
+          .map((variant) => variant.name)
+          .toList();
+      expect(hdfc, containsAll(['Swiggy BLCK', 'Swiggy Ornge']));
+
+      final sbi = bankCardVariants[IndianBank.sbi]!
+          .map((variant) => variant.name)
+          .toList();
+      expect(
+        sbi,
+        containsAll(['Eternal', 'PhonePe SELECT BLACK', 'PhonePe PURPLE']),
+      );
+
+      final slice = bankCardVariants[IndianBank.slice]!
+          .map((variant) => variant.name)
+          .toList();
+      expect(slice, contains('UPI Credit Card'));
     });
 
     test('every catalogue variant has a usable network and colour', () {

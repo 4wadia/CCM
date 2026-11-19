@@ -107,3 +107,23 @@ String? fetchOriginalCardImageUrl(IndianBank bank, String cardTier) {
 
   return null;
 }
+
+/// Returns the aspect ratio of the official artwork for this variant.
+///
+/// Some issuers publish vertical card faces (for example the SBI PhonePe and
+/// Eternal cards). Using the artwork's own ratio keeps the full card visible
+/// instead of cropping it into a horizontal frame.
+double fetchOriginalCardAspectRatio(IndianBank bank, String cardTier) {
+  final tierLower = cardTier.toLowerCase();
+  final presets = bankCardVariants[bank] ?? const [];
+
+  for (final preset in presets) {
+    if (tierLower.contains(preset.name.toLowerCase()) &&
+        preset.imageUrl != null &&
+        preset.imageAspectRatio != null) {
+      return preset.imageAspectRatio!;
+    }
+  }
+
+  return 1.586;
+}

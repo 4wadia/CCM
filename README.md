@@ -81,9 +81,11 @@ See [`docs/release.md`](docs/release.md).
 ## Card catalogue and fresh-install behaviour
 
 The add-card and auto-detected-card completion flows include a curated catalogue of
-46 Indian banks and card issuers, their common card products, and an **Other card**
-fallback for newly launched or unlisted products. Users can select the issuing bank,
-card model, and network. Only the last four digits are accepted; full card numbers,
+47 Indian banks and card issuers, their common card products, and an **Other card**
+fallback for newly launched or unlisted products. Recent additions include the
+Slice UPI Credit Card, SBI Card Eternal, PhonePe SBI Card SELECT BLACK/PURPLE, and
+the Swiggy HDFC Bank BLCK/Ornge variants. Users can select the issuing bank, card
+model, and network. Only the last four digits are accepted; full card numbers,
 CVVs, PINs, passwords, and OAuth tokens are never stored.
 
 A fresh install contains zero cards and zero transactions. The app only creates records

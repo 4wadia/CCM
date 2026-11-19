@@ -180,6 +180,45 @@ class _GoogleSetupHelpDialog extends StatelessWidget {
                     ),
                   ),
                 ),
+                SizedBox(height: scale.s(10)),
+                Container(
+                  padding: EdgeInsets.all(scale.s(12)),
+                  decoration: BoxDecoration(
+                    color: palette.gold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(scale.s(10)),
+                    border: Border.all(
+                      color: palette.gold.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SEEING "ACCESS BLOCKED"?',
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9),
+                          fontWeight: FontWeight.w700,
+                          color: palette.gold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      SizedBox(height: scale.s(5)),
+                      Text(
+                        'The OAuth app is still in production without Google '
+                        'verification. For personal use, open the OAuth consent '
+                        'screen, set Publishing status to Testing, and add the '
+                        'exact Gmail account you sign in with under Test users. '
+                        'Then revoke CCM at myaccount.google.com/permissions '
+                        'and retry after 5–10 minutes.',
+                        style: OnyxTypography.sans(
+                          fontSize: scale.s(10.5),
+                          color: palette.subtleText,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 SizedBox(height: scale.s(14)),
                 SizedBox(
                   height: scale.s(44),
