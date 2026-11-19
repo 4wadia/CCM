@@ -7,8 +7,10 @@ gradle-wrapper.jar
 GeneratedPluginRegistrant.java
 .cxx/
 
-# Remember to never publicly share your keystore.
-# See https://flutter.dev/to/reference-keystore
+# Never commit a private Play Store keystore. The Onyx sideload key below is
+# the public Android debug certificate used for 0.3.1+ APKs; keeping it in the
+# repository is what makes future sideloaded updates install in place.
 key.properties
 **/*.keystore
 **/*.jks
+!app/onyx-sideload.keystore

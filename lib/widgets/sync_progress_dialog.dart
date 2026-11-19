@@ -152,8 +152,8 @@ class _CardSyncProgressDialogState extends State<_CardSyncProgressDialog> {
               SizedBox(height: scale.s(4)),
               Text(
                 _isScanning
-                    ? 'Extracting last month\'s transactions, points & cashback from SMS and bank emails...'
-                    : 'Successfully retrieved last month\'s spend, statement balance & reward points.',
+                    ? 'Extracting last month\'s card transactions from SMS and bank emails...'
+                    : 'Finished reading the available card transactions.',
                 textAlign: TextAlign.center,
                 style: OnyxTypography.sans(
                   fontSize: scale.s(11.5),
@@ -189,25 +189,8 @@ class _CardSyncProgressDialogState extends State<_CardSyncProgressDialog> {
                       ),
                       Divider(color: palette.divider, height: scale.s(16)),
                       _StatRow(
-                        label: 'Statement Reward Points',
-                        value:
-                            '+${formatIndianNumber(_result!.statementPoints)} pts',
-                        palette: palette,
-                        scale: scale,
-                        highlightGold: true,
-                      ),
-                      Divider(color: palette.divider, height: scale.s(16)),
-                      _StatRow(
-                        label: 'Cashback Earned',
-                        value: '+${formatINR(_result!.cashbackEarned)}',
-                        palette: palette,
-                        scale: scale,
-                        highlightGold: true,
-                      ),
-                      Divider(color: palette.divider, height: scale.s(16)),
-                      _StatRow(
-                        label: 'Payment Due Date',
-                        value: _result!.statementDueDate,
+                        label: 'Source',
+                        value: _result!.sourceDescription,
                         palette: palette,
                         scale: scale,
                       ),
@@ -256,14 +239,11 @@ class _StatRow extends StatelessWidget {
   final String value;
   final OnyxPalette palette;
   final OnyxScale scale;
-  final bool highlightGold;
-
   const _StatRow({
     required this.label,
     required this.value,
     required this.palette,
     required this.scale,
-    this.highlightGold = false,
   });
 
   @override
@@ -283,7 +263,7 @@ class _StatRow extends StatelessWidget {
           style: OnyxTypography.mono(
             fontSize: scale.s(11.5),
             fontWeight: FontWeight.w600,
-            color: highlightGold ? palette.gold : palette.primaryText,
+            color: palette.primaryText,
           ),
         ),
       ],

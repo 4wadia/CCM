@@ -89,15 +89,24 @@ class AndroidGoogleAuthService implements OAuthService {
   }
 
   String _messageFor(PlatformException error) {
+    final platformMessage = error.message?.trim();
     return switch (error.code) {
       'cancelled' => 'Gmail connection was cancelled.',
       'in_progress' => 'Gmail authorization is already in progress.',
       'no_token' =>
         'Google did not return an access token. Try connecting again.',
+      'scope_denied' =>
+        platformMessage?.isNotEmpty == true
+            ? platformMessage!
+            : 'Gmail read access was not granted. Enable the Gmail API and '
+                  'approve the Gmail read-only scope during sign-in.',
       _ =>
-        'Gmail could not be connected. Create an Android OAuth client for '
-            'package app.creditcardmanager with this app\'s signing SHA-1, '
-            'enable the Gmail API, and add your Google account as a test user.',
+        platformMessage?.isNotEmpty == true
+            ? platformMessage!
+            : 'Gmail could not be connected. Create an Android OAuth client for '
+                  'package app.creditcardmanager with this app\'s signing SHA-1, '
+                  'enable the Gmail API, and add your Google account as a test '
+                  'user. Open Google sign-in setup help for details.',
     };
   }
 }

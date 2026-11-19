@@ -359,10 +359,55 @@ class _IssueCardDialogState extends State<_IssueCardDialog> {
                       limit: 500000,
                       brand: _selectedBrand,
                       cardTier: _selectedVariant.name,
+                      cardColorValue: _originalColor.color.toARGB32(),
+                      isLightCard: _originalColor.isLight,
                       dailyLimit: 100000,
                       cardImagePath: _pickedImagePath,
+                      cardImageUrl: _pickedImagePath == null
+                          ? fetchOriginalCardImageUrl(
+                              _selectedBank,
+                              _selectedVariant.name,
+                            )
+                          : null,
                     ),
                     aspectRatio: 1.586,
+                  ),
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      Icon(
+                        _pickedImagePath != null
+                            ? Icons.photo_outlined
+                            : fetchOriginalCardImageUrl(
+                                    _selectedBank,
+                                    _selectedVariant.name,
+                                  ) !=
+                                  null
+                            ? Icons.cloud_done_outlined
+                            : Icons.auto_awesome_outlined,
+                        size: 12,
+                        color: palette.gold,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          _pickedImagePath != null
+                              ? 'Custom card photo selected.'
+                              : fetchOriginalCardImageUrl(
+                                      _selectedBank,
+                                      _selectedVariant.name,
+                                    ) !=
+                                    null
+                              ? 'Official card artwork loads automatically for this variant.'
+                              : 'No official artwork for this variant yet — using the generated card design.',
+                          style: OnyxTypography.mono(
+                            fontSize: 8.5,
+                            color: palette.mutedText,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../core/errors/app_failure.dart';
 import '../models/financial_models.dart';
 import '../services/auto_sync_service.dart';
 import '../theme/onyx_theme.dart';
 import 'app_logo.dart';
+import 'google_setup_help_dialog.dart';
 
 Future<void> showPermissionOnboardingDialog({
   required BuildContext context,
@@ -52,6 +54,7 @@ class _PermissionOnboardingSheetState
   String? _connectedEmail;
   String? _profileName;
   String? _profilePhoto;
+  String? _googleError;
 
   @override
   void initState() {
@@ -82,40 +85,74 @@ class _PermissionOnboardingSheetState
   }
 
   Future<void> _connectEmail() async {
-    setState(() => _isLoading = true);
-    final profile = await _syncService.connectGoogleAccount();
-    if (mounted) {
-      if (profile != null) {
-        setState(() {
-          _emailConnected = true;
-          _connectedEmail = profile.email;
-          _profileName = profile.name;
-          _profilePhoto = profile.photoUrl;
-          _isLoading = false;
-        });
-        widget.onProfileUpdated(profile);
-      } else {
-        setState(() => _isLoading = false);
-      }
+    setState(() {
+      _isLoading = true;
+      _googleError = null;
+    });
+
+    try {
+      final profile = await _syncService.connectGoogleAccount();
+      if (!mounted) return;
+      setState(() {
+        _emailConnected = true;
+        _connectedEmail = profile.email;
+        _profileName = profile.name;
+        _profilePhoto = profile.photoUrl;
+        _isLoading = false;
+      });
+      widget.onProfileUpdated(profile);
+    } on AppFailure catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _googleError = error.message;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _googleError =
+            'Could not connect Google. Check your connection and try again.';
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _grantAllAndProceed() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _googleError = null;
+    });
     // Request SMS & Notifications
     final res = await _syncService.requestAllPermissions();
     _smsGranted = res['sms'] ?? false;
     _notifsGranted = res['notifications'] ?? false;
 
-    // Connect Google Account if not yet connected
+    // Connect Google Account if not yet connected. A Google Cloud OAuth
+    // client is required; keep the sheet open so the error and setup help are
+    // visible instead of silently continuing.
     if (!_emailConnected) {
-      final profile = await _syncService.connectGoogleAccount();
-      if (profile != null) {
+      try {
+        final profile = await _syncService.connectGoogleAccount();
         _emailConnected = true;
         _connectedEmail = profile.email;
         _profileName = profile.name;
         _profilePhoto = profile.photoUrl;
         widget.onProfileUpdated(profile);
+      } on AppFailure catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _googleError = error.message;
+          _isLoading = false;
+        });
+        return;
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _googleError =
+              'Could not connect Google. Check your connection and try again.';
+          _isLoading = false;
+        });
+        return;
       }
     } else if (_profileName != null) {
       widget.onProfileUpdated(
@@ -211,7 +248,7 @@ class _PermissionOnboardingSheetState
                   ),
                   SizedBox(height: scale.s(6)),
                   Text(
-                    'To automate card spend detection, monthly billing dues, and cashback tracking, Onyx requires local read access.',
+                    'To automate card spend detection and statement import, Onyx requires local read access.',
                     style: OnyxTypography.sans(
                       fontSize: scale.s(12),
                       color: palette.mutedText,
@@ -240,7 +277,7 @@ class _PermissionOnboardingSheetState
                     title: 'Email & Statement Access',
                     description: _emailConnected
                         ? 'Connected as ${_connectedEmail ?? 'Google Account'}. Name & profile photo synced.'
-                        : 'Connect Gmail to detect e-statements, reward points, cashback & sync your profile photo.',
+                        : 'Connect Gmail to import e-statements and sync your profile photo.',
                     isGranted: _emailConnected,
                     grantedLabel: _connectedEmail != null
                         ? 'Connected (${_connectedEmail!.split('@').first})'
@@ -249,6 +286,53 @@ class _PermissionOnboardingSheetState
                     onTap: _connectEmail,
                     palette: palette,
                     scale: scale,
+                  ),
+                  if (_googleError != null) ...[
+                    SizedBox(height: scale.s(6)),
+                    Container(
+                      padding: EdgeInsets.all(scale.s(10)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(scale.s(9)),
+                        border: Border.all(
+                          color: const Color(0xFFEF4444)
+                              .withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Text(
+                        _googleError!,
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: const Color(0xFFF87171),
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => showGoogleSetupHelpDialog(
+                        context: context,
+                        isDarkMode: widget.isDarkMode,
+                      ),
+                      icon: Icon(Icons.help_outline_rounded, size: scale.s(13)),
+                      label: Text(
+                        'Google sign-in setup help',
+                        style: OnyxTypography.mono(
+                          fontSize: scale.s(9.5),
+                          color: palette.mutedText,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: scale.s(4),
+                          vertical: scale.s(2),
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
                   ),
                   SizedBox(height: scale.s(10)),
 

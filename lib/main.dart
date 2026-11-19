@@ -155,6 +155,30 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
     });
   }
 
+  void _handleDeleteCard(CreditCardModel card) {
+    setState(() {
+      _cards.removeWhere((c) => c.id == card.id);
+      _transactions.removeWhere((tx) => _transactionBelongsToCard(tx, card));
+      if (_selectedCardForManage?.id == card.id) {
+        _selectedCardForManage = null;
+      }
+    });
+    _showStatusToast('${card.cardTier} removed');
+  }
+
+  static bool _transactionBelongsToCard(
+    TransactionModel tx,
+    CreditCardModel card,
+  ) {
+    final last4 = tx.cardLast4.trim();
+    if (last4.isNotEmpty) {
+      return last4 == card.lastFour &&
+          (tx.cardBank == null || tx.cardBank == card.bankName);
+    }
+    return tx.cardBank == card.bankName &&
+        (tx.cardBrand == null || tx.cardBrand == card.brand);
+  }
+
   @override
   void dispose() {
     _toastTimer?.cancel();
@@ -201,7 +225,7 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
       });
       if (syncResult.transactions.isNotEmpty) {
         _showStatusToast(
-          'Auto-synced ${syncResult.transactions.length} txns & ₹${syncResult.cashbackEarned.toStringAsFixed(0)} rewards',
+          'Auto-synced ${syncResult.transactions.length} transactions.',
         );
       } else {
         _showStatusToast('No matching SMS transactions found yet.');
@@ -279,6 +303,8 @@ class _OnyxCardsAppState extends State<OnyxCardsApp> {
                                       () => _selectedCardForManage = null,
                                     ),
                                     onCompleteCard: _promptCompleteCard,
+                                    onUpdateCard: _handleUpdateCard,
+                                    onDeleteCard: _handleDeleteCard,
                                     isDarkMode: _isDarkMode,
                                   )
                                 : _activeTab == ScreenId.cards

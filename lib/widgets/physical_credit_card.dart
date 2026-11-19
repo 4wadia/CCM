@@ -115,7 +115,7 @@ class CardSupplierMark extends StatelessWidget {
   }
 }
 
-class PhysicalCreditCard extends StatelessWidget {
+class PhysicalCreditCard extends StatefulWidget {
   final CreditCardModel card;
   final VoidCallback? onTap;
   final double aspectRatio;
@@ -128,7 +128,53 @@ class PhysicalCreditCard extends StatelessWidget {
   });
 
   @override
+  State<PhysicalCreditCard> createState() => _PhysicalCreditCardState();
+}
+
+class _PhysicalCreditCardState extends State<PhysicalCreditCard> {
+  String? _loadedArtKey;
+  bool _artLoaded = false;
+  bool _artFailed = false;
+
+  @override
+  void didUpdateWidget(covariant PhysicalCreditCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldArt = oldWidget.card.cardImagePath ?? oldWidget.card.cardImageUrl;
+    final newArt = widget.card.cardImagePath ?? widget.card.cardImageUrl;
+    if (oldArt != newArt) {
+      _loadedArtKey = null;
+      _artLoaded = false;
+      _artFailed = false;
+    }
+  }
+
+  void _markArtLoaded(String key) {
+    if (_artLoaded && _loadedArtKey == key) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _loadedArtKey = key;
+        _artLoaded = true;
+        _artFailed = false;
+      });
+    });
+  }
+
+  void _markArtFailed(String key) {
+    if (_artFailed && _loadedArtKey == key) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _loadedArtKey = key;
+        _artFailed = true;
+        _artLoaded = false;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final card = widget.card;
     final scale = OnyxScale.of(context);
     final originalColor = fetchOriginalCardColor(
       card.bankName,
@@ -150,14 +196,19 @@ class PhysicalCreditCard extends StatelessWidget {
         fetchOriginalCardImageUrl(card.bankName, card.cardTier);
     final hasNetworkImage =
         effectiveImageUrl != null && effectiveImageUrl.isNotEmpty;
-    final hasImage = hasLocalImage || hasNetworkImage;
+    final artKey = hasLocalImage
+        ? card.cardImagePath
+        : (hasNetworkImage ? effectiveImageUrl : null);
+    final hasArt = artKey != null;
+    final showArt = hasArt && !_artFailed;
+    final showGenerated = !showArt || !_artLoaded;
 
-    final isLight = hasImage
+    final isLight = card.isFrozen
         ? false
-        : (card.isFrozen ? false : (card.isLightCard ?? originalColor.isLight));
-    final inkColor = hasImage
-        ? const Color(0xFFF8F7F4)
-        : (isLight ? const Color(0xFF111113) : const Color(0xFFF8F7F4));
+        : (card.isLightCard ?? originalColor.isLight);
+    final inkColor = isLight
+        ? const Color(0xFF111113)
+        : const Color(0xFFF8F7F4);
 
     final tierLower = card.cardTier.toLowerCase();
     final isSilverChip =
@@ -171,9 +222,122 @@ class PhysicalCreditCard extends StatelessWidget {
         ? card.maskedNumber.substring(card.maskedNumber.length - 4)
         : '••••';
 
+    final Widget generatedFace = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: scale.s(18),
+        vertical: scale.s(15),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AuthenticBankLogo(
+                bank: card.bankName,
+                isLightCard: isLight,
+                scale: scale.factor,
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (card.contactlessEnabled)
+                    ContactlessWaveWidget(
+                      color: inkColor.withValues(alpha: 0.8),
+                      size: scale.s(16),
+                    ),
+                  if (card.isFrozen) ...[
+                    SizedBox(width: scale.s(6)),
+                    Icon(
+                      Icons.lock_outline,
+                      size: scale.s(15),
+                      color: const Color(0xFFF87171),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: scale.s(2)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                EmvChipWidget(
+                  isGold: !isSilverChip,
+                  width: scale.s(36),
+                  height: scale.s(26),
+                ),
+                Flexible(
+                  child: AuthenticCardTierArt(
+                    bank: card.bankName,
+                    cardTier: card.cardTier,
+                    isLightCard: isLight,
+                    scale: scale.factor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '•••• •••• •••• $last4',
+                      style: OnyxTypography.mono(
+                        fontSize: scale.s(13.5),
+                        fontWeight: FontWeight.w600,
+                        color: inkColor,
+                        letterSpacing: 2.0,
+                        tabularFigures: true,
+                      ),
+                    ),
+                    SizedBox(height: scale.s(4)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'VALID\nTHRU',
+                          style: OnyxTypography.mono(
+                            fontSize: scale.s(6.5),
+                            color: inkColor.withValues(alpha: 0.65),
+                            height: 1.0,
+                          ),
+                        ),
+                        SizedBox(width: scale.s(5)),
+                        Text(
+                          card.expiry.isNotEmpty ? card.expiry : '••/••',
+                          style: OnyxTypography.mono(
+                            fontSize: scale.s(11),
+                            fontWeight: FontWeight.w600,
+                            color: inkColor,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: scale.s(10)),
+              CardSupplierMark(brand: card.brand, isLight: isLight),
+            ],
+          ),
+        ],
+      ),
+    );
+
     final Widget cardBody = RepaintBoundary(
       child: AspectRatio(
-        aspectRatio: aspectRatio,
+        aspectRatio: widget.aspectRatio,
         child: Container(
           decoration: BoxDecoration(
             color: baseColor,
@@ -183,150 +347,99 @@ class PhysicalCreditCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(scale.s(14)),
             child: Stack(
               children: [
-                // User Uploaded Photo / Custom Card Art (Downsampled for memory optimization)
-                if (hasLocalImage)
+                if (showArt)
                   Positioned.fill(
-                    child: Image.file(
-                      File(card.cardImagePath!),
-                      fit: BoxFit.cover,
-                      cacheWidth: scale.s(600).round(),
-                      errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
-                    ),
-                  )
-                else if (hasNetworkImage)
-                  Positioned.fill(
-                    child: Image.network(
-                      effectiveImageUrl,
-                      fit: BoxFit.cover,
-                      cacheWidth: scale.s(600).round(),
-                      errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
+                    child: Opacity(
+                      opacity: _artLoaded ? 1 : 0,
+                      child: hasLocalImage
+                          ? Image.file(
+                              File(card.cardImagePath!),
+                              fit: BoxFit.cover,
+                              cacheWidth: scale.s(700).round(),
+                              frameBuilder:
+                                  (context, child, frame, synchronous) {
+                                    if (frame != null) {
+                                      _markArtLoaded(artKey);
+                                    }
+                                    return child;
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                _markArtFailed(artKey);
+                                return const SizedBox.shrink();
+                              },
+                            )
+                          : Image.network(
+                              effectiveImageUrl!,
+                              fit: BoxFit.cover,
+                              cacheWidth: scale.s(700).round(),
+                              frameBuilder:
+                                  (context, child, frame, synchronous) {
+                                    if (frame != null) {
+                                      _markArtLoaded(artKey);
+                                    }
+                                    return child;
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                _markArtFailed(artKey);
+                                return const SizedBox.shrink();
+                              },
+                            ),
                     ),
                   ),
 
-                // Authentic Physical Card Face Elements (Bank Logo, Chip, NFC, Tier Art, Numbers)
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: scale.s(18),
-                    vertical: scale.s(15),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Top Row: Authentic Bank Logo + Contactless Wave
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          AuthenticBankLogo(
-                            bank: card.bankName,
-                            isLightCard: isLight,
-                            scale: scale.factor,
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (card.contactlessEnabled)
-                                ContactlessWaveWidget(
-                                  color: inkColor.withValues(alpha: 0.8),
-                                  size: scale.s(16),
-                                ),
-                              if (card.isFrozen) ...[
-                                SizedBox(width: scale.s(6)),
-                                Icon(
-                                  Icons.lock_outline,
-                                  size: scale.s(15),
-                                  color: const Color(0xFFF87171),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
+                // While official artwork loads (or if it fails) keep a complete,
+                // generated card face instead of showing an empty coloured box.
+                if (showGenerated) generatedFace,
+
+                // Official card art already includes the bank and network
+                // marks, so only add a quiet strip for the masked number.
+                if (showArt && _artLoaded)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: EdgeInsets.fromLTRB(
+                        scale.s(16),
+                        scale.s(22),
+                        scale.s(16),
+                        scale.s(12),
                       ),
-
-                      // Middle Row: EMV Chip + Authentic Card Tier Art (Infinia / Amazon Pay / Cashback / Magnus)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: scale.s(2)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            EmvChipWidget(
-                              isGold: !isSilverChip,
-                              width: scale.s(36),
-                              height: scale.s(26),
-                            ),
-                            Flexible(
-                              child: AuthenticCardTierArt(
-                                bank: card.bankName,
-                                cardTier: card.cardTier,
-                                isLightCard: isLight,
-                                scale: scale.factor,
-                              ),
-                            ),
-                          ],
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Color(0xB3000000)],
                         ),
                       ),
-
-                      // Bottom Row: Embossed Masked Card Number + Expiry + Holder + Network Logo
-                      Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '•••• •••• •••• $last4',
-                                  style: OnyxTypography.mono(
-                                    fontSize: scale.s(13.5),
-                                    fontWeight: FontWeight.w600,
-                                    color: inkColor,
-                                    letterSpacing: 2.0,
-                                    tabularFigures: true,
-                                  ),
-                                ),
-                                SizedBox(height: scale.s(4)),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'VALID\nTHRU',
-                                      style: OnyxTypography.mono(
-                                        fontSize: scale.s(6.5),
-                                        color: inkColor.withValues(alpha: 0.65),
-                                        height: 1.0,
-                                      ),
-                                    ),
-                                    SizedBox(width: scale.s(5)),
-                                    Text(
-                                      card.expiry.isNotEmpty
-                                          ? card.expiry
-                                          : '••/••',
-                                      style: OnyxTypography.mono(
-                                        fontSize: scale.s(11),
-                                        fontWeight: FontWeight.w600,
-                                        color: inkColor,
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          Text(
+                            '•••• $last4',
+                            style: OnyxTypography.mono(
+                              fontSize: scale.s(11.5),
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFF8F7F4),
+                              letterSpacing: 1.4,
+                              tabularFigures: true,
                             ),
                           ),
-                          SizedBox(width: scale.s(10)),
-                          CardSupplierMark(brand: card.brand, isLight: isLight),
+                          if (card.expiry.isNotEmpty)
+                            Text(
+                              card.expiry,
+                              style: OnyxTypography.mono(
+                                fontSize: scale.s(10.5),
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFF8F7F4),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
 
-                // 6. Frozen State Blur / Lock Overlay
                 if (card.isFrozen)
                   Positioned.fill(
                     child: Container(
@@ -359,10 +472,10 @@ class PhysicalCreditCard extends StatelessWidget {
       ),
     );
 
-    if (onTap == null) return cardBody;
+    if (widget.onTap == null) return cardBody;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
       child: cardBody,
     );

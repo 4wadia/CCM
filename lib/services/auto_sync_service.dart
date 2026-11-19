@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../core/errors/app_failure.dart';
 import '../domain/entities/sms_message.dart';
 import '../integrations/gmail/android_google_auth_service.dart';
 import '../integrations/gmail/oauth_service.dart';
@@ -106,14 +107,24 @@ class AutoSyncService {
   }
 
   /// Authorizes Google Account and fetches user profile name & photo.
-  Future<UserProfileModel?> connectGoogleAccount() async {
+  ///
+  /// Throws an [AppFailure] with a user-safe message when authorization or the
+  /// profile request fails. Callers should show that message and offer the
+  /// in-app Google setup help instead of silently returning to the old state.
+  Future<UserProfileModel> connectGoogleAccount() async {
     try {
       final tokens = await _googleAuth.connect();
       return await fetchGoogleUserProfile(tokens.accessToken);
-    } catch (_) {
-      // OAuth is optional. Never invent a profile when the real Google flow is
-      // unavailable; the caller keeps the user in the unconnected state.
-      return null;
+    } on AppFailure {
+      rethrow;
+    } catch (error) {
+      throw AppFailure(
+        code: 'CCM-GMAIL-011',
+        message:
+            'Google sign-in could not be completed. Check your connection '
+            'and the Google Cloud OAuth setup, then try again.',
+        cause: error,
+      );
     }
   }
 
@@ -125,17 +136,31 @@ class AutoSyncService {
     );
 
     if (response.statusCode != 200) {
-      throw StateError('Google profile could not be loaded.');
+      throw AppFailure(
+        code: 'CCM-GMAIL-012',
+        message:
+            'Google authorized the account, but the profile could not be '
+            'loaded. Check your connection and try again.',
+        cause: 'HTTP ${response.statusCode}',
+      );
     }
 
-    final data = json.decode(response.body) as Map<String, dynamic>;
-    return UserProfileModel(
-      name: data['name'] as String? ?? '',
-      email: data['email'] as String?,
-      photoUrl: data['picture'] as String?,
-      isEmailConnected: true,
-      lastSyncedAt: DateTime.now(),
-    );
+    try {
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      return UserProfileModel(
+        name: data['name'] as String? ?? '',
+        email: data['email'] as String?,
+        photoUrl: data['picture'] as String?,
+        isEmailConnected: true,
+        lastSyncedAt: DateTime.now(),
+      );
+    } catch (error) {
+      throw AppFailure(
+        code: 'CCM-GMAIL-013',
+        message: 'Google returned an unreadable profile. Try connecting again.',
+        cause: error,
+      );
+    }
   }
 
   /// Reads last month's SMS and email statement data for the newly added card.
@@ -204,25 +229,14 @@ class AutoSyncService {
       }
     }
 
-    final isCashback =
-        card.cardTier.toLowerCase().contains('amazon') ||
-        card.cardTier.toLowerCase().contains('cashback') ||
-        card.cardTier.toLowerCase().contains('millennia') ||
-        card.cardTier.toLowerCase().contains('ace');
-
-    final statementPoints = isCashback ? 0 : ((totalSpent / 150) * 4).round();
-    final cashbackEarned = isCashback
-        ? (totalSpent * 0.05).roundToDouble()
-        : (totalSpent * 0.015).roundToDouble();
-
     return SyncResult(
       transactions: foundTransactions,
       monthSpend: totalSpent,
-      statementPoints: statementPoints,
-      cashbackEarned: cashbackEarned,
-      statementDueDate: foundTransactions.isEmpty
-          ? ''
-          : '05 ${formatMonthShort(now.month + 1)}',
+      // Rewards, cashback and due dates are not present in the source SMS and
+      // must not be estimated. The UI only shows values actually parsed.
+      statementPoints: 0,
+      cashbackEarned: 0,
+      statementDueDate: '',
       syncedCount: foundTransactions.length,
       sourceDescription: readFromNativeSms
           ? 'Live SMS & Statement Extraction'

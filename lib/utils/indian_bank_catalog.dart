@@ -68,15 +68,27 @@ CardColorMatch _brandColor(CardSupplier brand) {
   };
 }
 
+String _hdfcArt(String name) {
+  return 'https://s7ap1.scene7.com/is/image/hdfcbankPWS/$name'
+      '?fmt=png-alpha&wid=640&hei=403&fit=constrain';
+}
+
+String _iciciArt(String path) {
+  return 'https://www.icici.bank.in/content/dam/icicibank/india/'
+      'managed-assets/revamp-page-images/$path';
+}
+
 CardVariantPreset _variant(
   String name,
   CardSupplier brand, {
   CardColorMatch? color,
+  String? imageUrl,
 }) {
   return CardVariantPreset(
     name: name,
     defaultBrand: brand,
     color: color ?? _brandColor(brand),
+    imageUrl: imageUrl,
   );
 }
 
@@ -98,6 +110,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         isLight: false,
         accentColor: Color(0xFFD4AF37),
       ),
+      imageUrl: _hdfcArt('infinia-credit-card'),
     ),
     _variant(
       'Regalia Gold',
@@ -108,6 +121,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         isLight: true,
         accentColor: Color(0xFF8A6814),
       ),
+      imageUrl: _hdfcArt('regalia-gold-credit-card'),
     ),
     _variant(
       'Diners Club Black',
@@ -118,6 +132,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         isLight: false,
         accentColor: Color(0xFFD4AF37),
       ),
+      imageUrl: _hdfcArt('diners-club-black'),
     ),
     _variant(
       'Millennia',
@@ -127,9 +142,18 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         color: Color(0xFF1E355E),
         isLight: false,
       ),
+      imageUrl: _hdfcArt('millennia-credit-card'),
     ),
-    _variant('MoneyBack+', CardSupplier.visa),
-    _variant('Freedom', CardSupplier.visa),
+    _variant(
+      'MoneyBack+',
+      CardSupplier.visa,
+      imageUrl: _hdfcArt('moneyback-plus-credit-card'),
+    ),
+    _variant(
+      'Freedom',
+      CardSupplier.visa,
+      imageUrl: _hdfcArt('freedom-credit-card'),
+    ),
     _variant(
       'Tata Neu Infinity',
       CardSupplier.rupay,
@@ -139,13 +163,34 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         isLight: false,
         accentColor: Color(0xFFE2B874),
       ),
+      imageUrl: _hdfcArt('tata-neu-i'),
     ),
-    _variant('Tata Neu Plus', CardSupplier.rupay),
-    _variant('Swiggy HDFC Bank', CardSupplier.mastercard),
-    _variant('Marriott Bonvoy', CardSupplier.visa),
+    _variant(
+      'Tata Neu Plus',
+      CardSupplier.rupay,
+      imageUrl: _hdfcArt('tata-neu-p'),
+    ),
+    _variant(
+      'Swiggy HDFC Bank',
+      CardSupplier.mastercard,
+      imageUrl: _hdfcArt('card-facia-swiggy'),
+    ),
+    _variant(
+      'Marriott Bonvoy',
+      CardSupplier.visa,
+      imageUrl: _hdfcArt('Card-Facia-Marriott-Bonvoy'),
+    ),
     _variant('IndiGo 6E Rewards', CardSupplier.visa),
-    _variant('Shoppers Stop', CardSupplier.visa),
-    _variant('IRCTC', CardSupplier.rupay),
+    _variant(
+      'Shoppers Stop',
+      CardSupplier.visa,
+      imageUrl: _hdfcArt('Card-Facia-Shoppers-Stop-Blue'),
+    ),
+    _variant(
+      'IRCTC',
+      CardSupplier.rupay,
+      imageUrl: _hdfcArt('Card-Facia-IRCTC'),
+    ),
   ],
   IndianBank.icici: [
     _variant(
@@ -157,6 +202,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         isLight: false,
         accentColor: Color(0xFFD4AF37),
       ),
+      imageUrl: _iciciArt('emeralde/emeralde-pdp-final.webp'),
     ),
     _variant(
       'Sapphiro',
@@ -166,6 +212,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         color: Color(0xFF15345C),
         isLight: false,
       ),
+      imageUrl: _iciciArt('sapphiro-pdp2.webp'),
     ),
     _variant(
       'Rubyx',
@@ -175,6 +222,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         color: Color(0xFF6E1828),
         isLight: false,
       ),
+      imageUrl: _iciciArt('rubyx-pdp2.webp'),
     ),
     _variant(
       'Coral',
@@ -184,6 +232,7 @@ final Map<IndianBank, List<CardVariantPreset>> _baseBankCardVariants = {
         color: Color(0xFF8A2B2B),
         isLight: false,
       ),
+      imageUrl: _iciciArt('coral-pdp2.webp'),
     ),
     _variant(
       'Amazon Pay',

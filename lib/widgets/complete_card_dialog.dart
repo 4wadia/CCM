@@ -123,16 +123,39 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
   CreditCardModel get _previewCard {
     final last4 = _enteredLast4;
     final masked = last4.isEmpty ? '•••• ••••' : '•••• $last4';
+    final tier = '${_selectedBank.shortName} ${_selectedVariant.name}';
+    final color = fetchOriginalCardColor(
+      _selectedBank,
+      _selectedVariant.name,
+      _selectedBrand,
+    );
+    final imageUrl = fetchOriginalCardImageUrl(
+      _selectedBank,
+      _selectedVariant.name,
+    );
 
-    return widget.card.copyWith(
+    return CreditCardModel(
+      id: widget.card.id,
       bankName: _selectedBank,
-      cardTier: '${_selectedBank.shortName} ${_selectedVariant.name}',
-      maskedNumber: masked,
       holderName: _holderController.text.trim().isNotEmpty
           ? _holderController.text.trim().toUpperCase()
           : widget.card.holderName,
-      brand: _selectedBrand,
+      maskedNumber: masked,
+      expiry: widget.card.expiry,
+      balance: widget.card.balance,
       limit: double.tryParse(_limitController.text.trim()) ?? widget.card.limit,
+      brand: _selectedBrand,
+      cardTier: tier,
+      cardColorValue: color.color.toARGB32(),
+      isLightCard: color.isLight,
+      isFrozen: widget.card.isFrozen,
+      dailyLimit: widget.card.dailyLimit,
+      currentDailySpent: widget.card.currentDailySpent,
+      contactlessEnabled: widget.card.contactlessEnabled,
+      onlinePaymentsEnabled: widget.card.onlinePaymentsEnabled,
+      internationalEnabled: widget.card.internationalEnabled,
+      cardImagePath: widget.card.cardImagePath,
+      cardImageUrl: imageUrl,
       isNeedsCompletion: false,
     );
   }
@@ -278,6 +301,39 @@ class _CompleteCardDialogState extends State<_CompleteCardDialog> {
 
                   // Live Interactive Physical Card Preview
                   PhysicalCreditCard(card: _previewCard, aspectRatio: 1.586),
+                  SizedBox(height: scale.s(7)),
+                  Row(
+                    children: [
+                      Icon(
+                        fetchOriginalCardImageUrl(
+                                  _selectedBank,
+                                  _selectedVariant.name,
+                                ) !=
+                                null
+                            ? Icons.cloud_done_outlined
+                            : Icons.auto_awesome_outlined,
+                        size: scale.s(12),
+                        color: palette.gold,
+                      ),
+                      SizedBox(width: scale.s(5)),
+                      Expanded(
+                        child: Text(
+                          fetchOriginalCardImageUrl(
+                                    _selectedBank,
+                                    _selectedVariant.name,
+                                  ) !=
+                                  null
+                              ? 'Official card artwork will be used for this variant.'
+                              : 'No official artwork for this variant yet — using the generated card design.',
+                          style: OnyxTypography.mono(
+                            fontSize: scale.s(8.5),
+                            color: palette.mutedText,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   SizedBox(height: scale.s(20)),
 
                   // Section 1: Which bank issued this card?

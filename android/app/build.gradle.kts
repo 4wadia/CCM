@@ -39,11 +39,28 @@ android {
             configuredAppAuthRedirectScheme ?: "app.creditcardmanager"
     }
 
+    signingConfigs {
+        create("sideload") {
+            // Stable sideload key introduced in 0.3.1. Keeping this key in the
+            // repository (instead of relying on ~/.android/debug.keystore)
+            // makes every future APK upgrade in place. This is a public debug
+            // key for sideloading only; use a private Play signing key before
+            // publishing to a store.
+            storeFile = file("onyx-sideload.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        // Keep debug, profile and release builds on the same certificate so a
+        // locally-run build can also be updated by a downloaded APK.
+        debug {
+            signingConfig = signingConfigs.getByName("sideload")
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("sideload")
         }
     }
 }

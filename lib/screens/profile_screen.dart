@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../core/errors/app_failure.dart';
 import '../models/financial_models.dart';
 import '../services/auto_sync_service.dart';
 import '../theme/onyx_theme.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/google_setup_help_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserProfileModel profile;
@@ -31,29 +33,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _syncService = AutoSyncService();
   bool _isConnecting = false;
   String? _statusMessage;
+  bool _statusIsError = false;
 
   Future<void> _handleConnectGoogle() async {
     setState(() {
       _isConnecting = true;
       _statusMessage = null;
+      _statusIsError = false;
     });
 
     try {
       final updatedProfile = await _syncService.connectGoogleAccount();
-      if (updatedProfile != null) {
-        widget.onUpdateProfile(updatedProfile);
+      widget.onUpdateProfile(updatedProfile);
+      if (mounted) {
         setState(() {
-          _statusMessage = 'Google profile synced successfully!';
+          _statusMessage = 'Google profile synced successfully.';
+          _statusIsError = false;
         });
-      } else {
+      }
+    } on AppFailure catch (error) {
+      if (mounted) {
         setState(() {
-          _statusMessage = 'Google sign-in was not completed.';
+          _statusMessage = error.message;
+          _statusIsError = true;
         });
       }
     } catch (_) {
-      setState(() {
-        _statusMessage = 'Could not connect Google account.';
-      });
+      if (mounted) {
+        setState(() {
+          _statusMessage =
+              'Could not connect Google. Check your connection and try again.';
+          _statusIsError = true;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
@@ -69,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     setState(() {
       _statusMessage = 'Disconnected Google account.';
+      _statusIsError = false;
     });
   }
 
@@ -260,9 +273,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(height: scale.s(10)),
                   Text(
                     _statusMessage!,
+                    textAlign: TextAlign.center,
                     style: OnyxTypography.mono(
                       fontSize: scale.s(10),
-                      color: palette.gold,
+                      color: _statusIsError
+                          ? const Color(0xFFF87171)
+                          : palette.gold,
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -372,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 SizedBox(height: scale.s(12)),
                 Text(
-                  'Connected mail access allows Onyx to fetch your name, profile photo, credit card e-statements, monthly billing dues, and cashback records directly from bank emails.',
+                  'Connected mail access allows Onyx to fetch your name, profile photo, credit card e-statements, and billing information directly from bank emails. Access is read-only.',
                   style: OnyxTypography.sans(
                     fontSize: scale.s(11),
                     color: palette.mutedText,
@@ -447,6 +464,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ],
+                ),
+                SizedBox(height: scale.s(6)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => showGoogleSetupHelpDialog(
+                      context: context,
+                      isDarkMode: widget.isDarkMode,
+                    ),
+                    icon: Icon(Icons.help_outline_rounded, size: scale.s(14)),
+                    label: Text(
+                      'Google sign-in setup help',
+                      style: OnyxTypography.mono(
+                        fontSize: scale.s(10),
+                        color: palette.mutedText,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: scale.s(4),
+                        vertical: scale.s(4),
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -613,7 +656,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 SizedBox(height: scale.s(4)),
                 Text(
-                  'VERSION 0.3.2 · LUXURY ONYX EDITION',
+                  'VERSION 0.3.3 · LUXURY ONYX EDITION',
                   style: OnyxTypography.mono(
                     fontSize: scale.s(9),
                     color: palette.mutedText,
